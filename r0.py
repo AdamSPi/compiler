@@ -10,7 +10,7 @@ class Expr:
 	def is_leaf(self):
 		return False
 
-	def interp(self):
+	def interp(self, debug):
 		pass
 
 class EX_NUM(Expr):
@@ -21,18 +21,23 @@ class EX_NUM(Expr):
 	def is_leaf(self):
 		return True
 
-	def interp(self):
+	def interp(self, debug):
 		return self.num
 
 class EX_READ(Expr):
 	def __init__(self):
 		self.str = f"(read)"
+		self.debug_counter = 42
 
 	def is_leaf(self):
 		return True
 
-	def interp(self):
-		self.num = int(input())
+	def interp(self, debug):
+		if debug:
+			self.num = self.debug_counter
+			self.debug_counter = self.debug_counter - 1
+		else:
+			self.num = int(input())
 		return self.num
 
 class EX_NEG(Expr):
@@ -40,16 +45,16 @@ class EX_NEG(Expr):
 		self.expr = e
 		self.str = f"(- {e})"
 
-	def interp(self):
-		return 0 - self.expr.interp()
+	def interp(self, debug):
+		return 0 - self.expr.interp(debug)
 
 class EX_ADD(Expr):
 	def __init__(self, e1, e2):
 		self.lhs, self.rhs = e1, e2
 		self.str = f"(+ {e1} {e2})"
 
-	def interp(self):
-		return self.lhs.interp() + self.rhs.interp()
+	def interp(self, debug):
+		return self.lhs.interp(debug) + self.rhs.interp(debug)
 
 class P:
 	def __init__(self, e):
@@ -59,5 +64,5 @@ class P:
 	def print(self):
 		print(self.str)
 
-	def interp(self):
-		return self.expr.interp()
+	def interp(self, debug=False):
+		return self.expr.interp(debug)
