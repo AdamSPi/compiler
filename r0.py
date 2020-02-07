@@ -3,6 +3,7 @@ from random import choice
 # p := (program any e)
 class Expr:
 	def __init__(self):
+		self.args = []
 		pass
 
 	def __repr__(self):
@@ -53,48 +54,76 @@ class READ(Expr):
 
 class NEG(Expr):
 	def __init__(self, e):
-		self.expr = e
-		self.str = f"(- {e})"
+		self.args = [e]
+		self.str = f"(- {self.args[0]})"
 
 	def interp(self, debug):
-		return 0 - self.expr.interp(debug)
+		return 0 - self.args[0].interp(debug)
 
 	def optimize(self):
-		expr = self.expr.optimize()
+		arg = self.args[0].optimize()
 
-		if expr.is_num():
-			return NUM(-expr.num)
-		return NEG(expr)
+		if type(arg) == NEG:
+			return arg.args[0]
+		return NEG(arg)
 
 class ADD(Expr):
 	def __init__(self, e1, e2):
-		self.lhs, self.rhs = e1, e2
-		self.str = f"(+ {e1} {e2})"
+		self.args = [e1, e2]
+		self.str = f"(+ {self.args[0]} {self.args[1]})"
 
 	def interp(self, debug):
-		return self.lhs.interp(debug) + self.rhs.interp(debug)
+		return self.args[0].interp(debug) + self.args[1].interp(debug)
 
 	def optimize(self):
-		lhs = self.lhs.optimize()
-		rhs = self.rhs.optimize()
+		argl = self.args[0].optimize()
+		argr = self.args[1].optimize()
 
-		if lhs.is_num() and rhs.is_num():
-			return NUM(lhs.num + rhs.num)
-		return ADD(lhs, rhs)
+		if argl.is_num() and argr.is_num():
+			return NUM(argl.num + argr.num)
+		elif argl.is_num() and not argr.is_leaf():
+			if len(argr.args) > 1:
+				if argr.args[0].is_num():
+					return ADD(
+						NUM(argl.num + argr.args[0].num),
+						argr.args[1]
+						)
+				elif argr.args[1].is_num():
+					return ADD(
+						NUM(argl.num + argr.args[1].num),
+						argr.args[0]
+						)
+		elif argr.is_num() and not argl.is_leaf():
+			if len(argl.args) > 1:
+				if argl.args[0].is_num():
+					return ADD(
+						NUM(argr.num + argl.args[0].num),
+						argl.args[1]
+						)
+				elif argl.args[1].is_num():
+					return ADD(
+						NUM(argr.num + argl.args[1].num),
+						argl.args[0]
+						)
+
+		return ADD(argl, argr)
 
 class P:
 	def __init__(self, e):
-		self.expr = e
+		self.args = [e]
 		self.str = f"(program {e})"
 
 	def show(self):
 		print(self.str)
 
 	def interp(self, debug=False):
-		return self.expr.interp(debug)
+		return self.args[0].interp(debug)
 
 	def optimize(self):
-		return P(self.expr.optimize())
+		return P(self.args[0].optimize())
+
+	def __eq__(self, rhs):
+		return self.show() == rhs.show()
 
 def gen(f, n):
 	return P(f(n))

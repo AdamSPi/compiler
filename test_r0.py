@@ -24,18 +24,23 @@ def test_gen():
 # print(abs(READ.debug_counter - 50))
 
 def test_optimize():
-	assert ast1.optimize().show() == P(NUM(20)).show()
-	assert ast2.optimize().show() == P(NEG(ADD(READ(), NUM(10)))).show()
-	assert ast3.optimize().show() == P(ADD(READ(), NEG(READ()))).show()
+	assert ast1.optimize() == P(NUM(20))
+	assert ast2.optimize() == P(NEG(ADD(READ(), NUM(10))))
+	assert ast3.optimize() == P(ADD(READ(), NEG(READ())))
 
-	assert gen(exp_r0, 1).optimize().show() == P(NUM(2)).show()
-	assert gen(exp_r0, 2).optimize().show() == P(NUM(4)).show()
-	assert gen(exp_r0, 3).optimize().show() == P(NUM(8)).show()
+	assert gen(exp_r0, 1).optimize()== P(NUM(2))
+	assert gen(exp_r0, 2).optimize() == P(NUM(4))
+	assert gen(exp_r0, 3).optimize() == P(NUM(8))
+
+	assert P(ADD(NUM(7), ADD(READ(), NUM(8)))).optimize() == P(ADD(NUM(15), READ()))
+	assert P(ADD(ADD(READ(), NUM(8)), NUM(7))).optimize() == P(ADD(READ(), NUM(15)))
 
 def test_interp_opt():
-	for n in range(1, 10):
+	for n in range(10):
 		astn = gen(rand_r0_no_read, n)
 		assert astn.interp() == astn.optimize().interp()
+		gen(rand_r0, n).optimize().interp(True)
+
 
 # ast4 = gen(rand_r0, 5)
 # ast4.show()
