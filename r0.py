@@ -1,3 +1,4 @@
+from random import choice
 # e := num | (read) | (-  e) | (+ e e)
 # p := (program any e)
 class Expr:
@@ -25,17 +26,18 @@ class EX_NUM(Expr):
 		return self.num
 
 class EX_READ(Expr):
+	debug_counter = 42
+
 	def __init__(self):
 		self.str = f"(read)"
-		self.debug_counter = 42
 
 	def is_leaf(self):
 		return True
 
 	def interp(self, debug):
 		if debug:
-			self.num = self.debug_counter
-			self.debug_counter = self.debug_counter - 1
+			self.num = EX_READ.debug_counter
+			EX_READ.debug_counter = EX_READ.debug_counter - 1
 		else:
 			self.num = int(input())
 		return self.num
@@ -61,8 +63,25 @@ class P:
 		self.expr = e
 		self.str = f"(program {e})"
 
-	def print(self):
+	def show(self):
 		print(self.str)
 
 	def interp(self, debug=False):
 		return self.expr.interp(debug)
+
+def gen(f, n):
+	return P(f(n))
+
+def exp_r0(n):
+	if n == 0:
+		return EX_NUM(1)
+	return EX_ADD(exp_r0(n-1), exp_r0(n-1))
+
+def rand_r0(n):
+	if n == 0:
+		return \
+			EX_NUM(choice([-256, 256])) if choice([0, 1]) \
+			else EX_READ()
+	return \
+		EX_NEG(rand_r0(n-1)) if choice([0, 1]) \
+		else EX_ADD(rand_r0(n-1), rand_r0(n-1))
