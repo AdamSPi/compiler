@@ -112,3 +112,10 @@ def rand_r0(n):
 	return \
 		NEG(rand_r0(n-1)) if choice([0, 1]) \
 		else ADD(rand_r0(n-1), rand_r0(n-1))
+
+def rand_r0_no_read(n):
+	if n == 0:
+		return NUM(choice(range(-256, 256)))
+	return \
+		NEG(rand_r0_no_read(n-1)) if choice([0, 1]) \
+		else ADD(rand_r0_no_read(n-1), rand_r0_no_read(n-1))

@@ -32,6 +32,11 @@ def test_optimize():
 	assert gen(exp_r0, 2).optimize().show() == P(NUM(4)).show()
 	assert gen(exp_r0, 3).optimize().show() == P(NUM(8)).show()
 
+def test_interp_opt():
+	for n in range(1, 10):
+		astn = gen(rand_r0_no_read, n)
+		assert astn.interp() == astn.optimize().interp()
+
 # ast4 = gen(rand_r0, 5)
 # ast4.show()
 # print()
