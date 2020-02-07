@@ -1,4 +1,8 @@
 from random import choice
+
+RAND = choice([0,100])
+READ_COUNT = 0
+
 # e := num | (read) | (-  e) | (+ e e)
 # p := (program any e)
 class Expr:
@@ -15,7 +19,7 @@ class Expr:
 	def is_leaf(self):
 		return False
 
-	def interp(self, debug):
+	def interp(self, db):
 		pass
 
 	def optimize(self):
@@ -24,7 +28,7 @@ class Expr:
 class NUM(Expr):
 	def __init__(self, num):
 		self.num = num
-		self.str = str(num)
+		self.str = f"NUM({self.num})"
 
 	def is_num(self):
 		return True
@@ -32,48 +36,52 @@ class NUM(Expr):
 	def is_leaf(self):
 		return True
 
-	def interp(self, debug):
+	def interp(self, db):
 		return self.num
 
 class READ(Expr):
-	debug_counter = 42
+	_db_cnt = RAND
 
 	def __init__(self):
-		self.str = "(read)"
+		self.str = "READ()"
 
 	def is_leaf(self):
 		return True
 
-	def interp(self, debug):
-		if debug:
-			self.num = READ.debug_counter
-			READ.debug_counter = READ.debug_counter - 1
+	def interp(self, db):
+		global READ_COUNT
+		if db:
+			self.num = READ._db_cnt
+			READ._db_cnt = READ._db_cnt - 1
 		else:
 			self.num = int(input())
+		READ_COUNT = READ_COUNT + 1
 		return self.num
 
 class NEG(Expr):
 	def __init__(self, e):
 		self.args = [e]
-		self.str = f"(- {self.args[0]})"
+		self.str = f"NEG({self.args[0]})"
 
-	def interp(self, debug):
-		return 0 - self.args[0].interp(debug)
+	def interp(self, db):
+		return 0 - self.args[0].interp(db)
 
 	def optimize(self):
 		arg = self.args[0].optimize()
 
-		if type(arg) == NEG:
+		if arg.is_num():
+			return NUM(-arg.num)
+		elif type(arg) == NEG:
 			return arg.args[0]
 		return NEG(arg)
 
 class ADD(Expr):
 	def __init__(self, e1, e2):
 		self.args = [e1, e2]
-		self.str = f"(+ {self.args[0]} {self.args[1]})"
+		self.str = f"ADD({self.args[0]}, {self.args[1]})"
 
-	def interp(self, debug):
-		return self.args[0].interp(debug) + self.args[1].interp(debug)
+	def interp(self, db):
+		return self.args[0].interp(db) + self.args[1].interp(db)
 
 	def optimize(self):
 		argl = self.args[0].optimize()
@@ -87,37 +95,41 @@ class ADD(Expr):
 					return ADD(
 						NUM(argl.num + argr.args[0].num),
 						argr.args[1]
-						)
+					)
 				elif argr.args[1].is_num():
 					return ADD(
 						NUM(argl.num + argr.args[1].num),
 						argr.args[0]
-						)
+					)
 		elif argr.is_num() and not argl.is_leaf():
 			if len(argl.args) > 1:
 				if argl.args[0].is_num():
 					return ADD(
 						NUM(argr.num + argl.args[0].num),
 						argl.args[1]
-						)
+					)
 				elif argl.args[1].is_num():
 					return ADD(
 						NUM(argr.num + argl.args[1].num),
 						argl.args[0]
-						)
+					)
 
 		return ADD(argl, argr)
 
 class P:
 	def __init__(self, e):
 		self.args = [e]
-		self.str = f"(program {e})"
+		self.str = f"P({e})"
 
 	def show(self):
 		print(self.str)
 
-	def interp(self, debug=False):
-		return self.args[0].interp(debug)
+	def interp(self, db=False, reset=False):
+		global RAND
+		if reset:
+			READ._db_cnt = RAND
+		ans = self.args[0].interp(db)
+		return ans
 
 	def optimize(self):
 		return P(self.args[0].optimize())
