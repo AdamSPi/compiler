@@ -4,6 +4,7 @@ RAND = choice([0,100])
 READ_COUNT = 0
 
 # e := num | (read) | (-  e) | (+ e e)
+#    | var | let var := xe in be
 # p := (program any e)
 
 class Expr:
@@ -19,11 +20,36 @@ class Expr:
 	def is_leaf(self):
 		return False
 
-	def interp(self, db):
+	def interp(self, env, db):
 		pass
 
 	def optimize(self):
 		return self
+
+class LET(Expr):
+	def __init__(self, var, xe, be):
+		self.var = var
+		self.xe = xe
+		self.be = be
+		self.str = f"(let ([{self.var} {self.xe}]) {self.be})"
+
+	def interp(self, env, db):
+		new_env = env.copy()
+		new_env[self.var.val] = self.xe.interp(env, db)
+		return self.be.interp(new_env, db)
+
+
+class VAR(Expr):
+	def __init__(self, var):
+		self.val = var
+		self.str = f"{self.val}"
+
+	def interp(self, env, db):
+		try:
+			return env[self.val]
+		except:
+			print("Variable not bound exception")
+			raise
 
 class NUM(Expr):
 	def __init__(self, num):
@@ -36,7 +62,7 @@ class NUM(Expr):
 	def is_leaf(self):
 		return True
 
-	def interp(self, db):
+	def interp(self, env, db):
 		return self.num
 
 class READ(Expr):
@@ -48,7 +74,7 @@ class READ(Expr):
 	def is_leaf(self):
 		return True
 
-	def interp(self, db):
+	def interp(self, env, db):
 		global READ_COUNT
 		if db:
 			self.num = READ._db_cnt
@@ -63,8 +89,8 @@ class NEG(Expr):
 		self.expr = e
 		self.str = f"(- {self.expr})"
 
-	def interp(self, db):
-		return 0 - self.expr.interp(db)
+	def interp(self, env, db):
+		return 0 - self.expr.interp(env, db)
 
 	def optimize(self):
 		expr = self.expr.optimize()
@@ -80,8 +106,8 @@ class ADD(Expr):
 		self.lhs, self.rhs = e1, e2
 		self.str = f"(+ {self.lhs} {self.rhs})"
 
-	def interp(self, db):
-		return self.lhs.interp(db) + self.rhs.interp(db)
+	def interp(self, env, db):
+		return self.lhs.interp(env, db) + self.rhs.interp(env, db)
 
 	def optimize(self):
 		lhs = self.lhs.optimize()
@@ -153,7 +179,7 @@ class P:
 		global RAND
 		if reset:
 			READ._db_cnt = RAND
-		ans = self.expr.interp(db)
+		ans = self.expr.interp({}, db)
 		return ans
 
 	def optimize(self):
@@ -161,27 +187,3 @@ class P:
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()
-
-def gen(f, n):
-	return P(f(n))
-
-def exp_r0(n):
-	if n == 0:
-		return NUM(1)
-	return ADD(exp_r0(n-1), exp_r0(n-1))
-
-def rand_r0(n):
-	if n == 0:
-		return \
-			NUM(choice(range(-256, 256))) if choice([0, 1]) \
-			else READ()
-	return \
-		NEG(rand_r0(n-1)) if choice([0, 1]) \
-		else ADD(rand_r0(n-1), rand_r0(n-1))
-
-def rand_r0_no_read(n):
-	if n == 0:
-		return NUM(choice(range(-256, 256)))
-	return \
-		NEG(rand_r0_no_read(n-1)) if choice([0, 1]) \
-		else ADD(rand_r0_no_read(n-1), rand_r0_no_read(n-1))

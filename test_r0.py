@@ -47,9 +47,3 @@ def test_interp_opt():
 		rand_ast = gen(rand_r0, n)
 		assert rand_ast.interp(True, True) == rand_ast.optimize().interp(True, True)
 		assert gen(exp_r0, n).optimize().interp() == 2**n
-
-
-# ast4 = gen(rand_r0, 5)
-# ast4.show()
-# print()
-# ast4.optimize().show()
