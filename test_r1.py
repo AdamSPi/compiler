@@ -19,3 +19,8 @@ def test_r1_interp():
 	assert ast0.interp() == 42
 	assert ast1.interp() == 42
 	ast2.interp(True)
+
+def test_rand_r1():
+	for n in range(12):
+		ast = gen(rand_r1, n)
+		assert ast.interp(True, True) == ast.optimize().interp(True, True)

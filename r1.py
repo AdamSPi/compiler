@@ -1,4 +1,7 @@
 from random import choice
+from r0 import rand_r0, rand_r0_no_read
+
+import string
 
 RAND = choice([0,100])
 READ_COUNT = 0
@@ -23,6 +26,9 @@ class Expr:
 	def interp(self, env, db):
 		pass
 
+	def is_var(self):
+		return False
+
 	def optimize(self):
 		return self
 
@@ -38,6 +44,11 @@ class LET(Expr):
 		new_env[self.var.val] = self.xe.interp(env, db)
 		return self.be.interp(new_env, db)
 
+	def optimize(self):
+		xe = self.xe.optimize()
+		be  =  self.be.optimize()
+		return LET(self.var, xe, be)
+
 
 class VAR(Expr):
 	def __init__(self, var):
@@ -50,6 +61,12 @@ class VAR(Expr):
 		except:
 			print("Variable not bound exception")
 			raise
+
+	def is_leaf(self):
+		return True
+
+	def is_var(self):
+		return True
 
 class NUM(Expr):
 	def __init__(self, num):
@@ -83,6 +100,9 @@ class READ(Expr):
 			self.num = int(input("Input an integer: ",))
 		READ_COUNT = READ_COUNT + 1
 		return self.num
+
+	def is_var(self):
+		return True
 
 class NEG(Expr):
 	def __init__(self, e):
@@ -141,25 +161,25 @@ class ADD(Expr):
 					)
 		elif type(rhs) ==  ADD and type(lhs) == ADD:
 			if rhs.lhs.is_num() and lhs.rhs.is_num() and \
-			type(rhs.rhs) == READ and type(lhs.lhs) == READ:
+			rhs.rhs.is_var() and lhs.lhs.is_var():
 				return ADD(
 						NUM(rhs.lhs.num +  lhs.rhs.num),
 						ADD(rhs.rhs, lhs.lhs)
 					)
 			elif rhs.lhs.is_num() and lhs.lhs.is_num() and \
-			type(rhs.rhs) == READ and type(lhs.rhs) == READ:
+			rhs.rhs.is_var() and lhs.rhs.is_var():
 				return ADD(
 						NUM(rhs.lhs.num +  lhs.lhs.num),
 						ADD(rhs.rhs, lhs.rhs)
 					)
 			elif rhs.rhs.is_num() and lhs.rhs.is_num() and \
-			type(rhs.lhs) == READ and type(lhs.lhs) == READ:
+			rhs.lhs.is_var() and lhs.lhs.is_var():
 				return ADD(
 						NUM(rhs.rhs.num +  lhs.rhs.num),
 						ADD(rhs.lhs, lhs.lhs)
 					)
 			elif rhs.rhs.is_num() and lhs.lhs.is_num() and \
-			type(rhs.lhs) == READ and type(lhs.rhs) == READ:
+			rhs.lhs.is_var() and lhs.rhs.is_var():
 				return ADD(
 						NUM(rhs.rhs.num +  lhs.lhs.num),
 						ADD(rhs.lhs, lhs.rhs)
@@ -187,3 +207,26 @@ class P:
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()
+
+def gen(f, n):
+	return P(f(n))
+
+def rand_r1(n, vs=[]):
+	if n == 0:
+		i = choice([0,1,2])
+		if i == 0 and vs:
+			return choice(vs)
+		elif i == 1:
+			return READ()
+		else:
+			return NUM(choice(range(-256, 256)))
+	j = choice([0,1,2])
+	if j == 0:
+		return NEG(rand_r1(n-1, vs))
+	elif j == 1:
+		return ADD(rand_r1(n-1, vs), rand_r1(n-1, vs))
+	else:
+		x_prime = VAR(choice(string.ascii_letters))
+		vs_prime = vs + [x_prime]
+		return LET(x_prime, rand_r1(n-1, vs), rand_r1(n-1, vs_prime))
+
