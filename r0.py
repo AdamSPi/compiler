@@ -7,7 +7,6 @@ READ_COUNT = 0
 # p := (program any e)
 class Expr:
 	def __init__(self):
-		self.args = []
 		pass
 
 	def __repr__(self):
@@ -60,65 +59,92 @@ class READ(Expr):
 
 class NEG(Expr):
 	def __init__(self, e):
-		self.args = [e]
-		self.str = f"NEG({self.args[0]})"
+		self.expr = e
+		self.str = f"NEG({self.expr})"
 
 	def interp(self, db):
-		return 0 - self.args[0].interp(db)
+		return 0 - self.expr.interp(db)
 
 	def optimize(self):
-		arg = self.args[0].optimize()
+		expr = self.expr.optimize()
 
-		if arg.is_num():
-			return NUM(-arg.num)
-		elif type(arg) == NEG:
-			return arg.args[0]
-		return NEG(arg)
+		if expr.is_num():
+			return NUM(-expr.num)
+		elif type(expr) == NEG:
+			return expr.expr
+		return NEG(expr)
 
 class ADD(Expr):
 	def __init__(self, e1, e2):
-		self.args = [e1, e2]
-		self.str = f"ADD({self.args[0]}, {self.args[1]})"
+		self.lhs, self.rhs = e1, e2
+		self.str = f"ADD({self.lhs}, {self.rhs})"
 
 	def interp(self, db):
-		return self.args[0].interp(db) + self.args[1].interp(db)
+		return self.lhs.interp(db) + self.rhs.interp(db)
 
 	def optimize(self):
-		argl = self.args[0].optimize()
-		argr = self.args[1].optimize()
+		lhs = self.lhs.optimize()
+		rhs = self.rhs.optimize()
 
-		if argl.is_num() and argr.is_num():
-			return NUM(argl.num + argr.num)
-		elif argl.is_num() and not argr.is_leaf():
-			if len(argr.args) > 1:
-				if argr.args[0].is_num():
+		if lhs.is_num() and rhs.is_num():
+			return NUM(lhs.num + rhs.num)
+		elif lhs.is_num() and not rhs.is_leaf():
+			if type(rhs) == ADD:
+				if rhs.lhs.is_num():
 					return ADD(
-						NUM(argl.num + argr.args[0].num),
-						argr.args[1]
+						NUM(lhs.num + rhs.lhs.num),
+						rhs.rhs
 					)
-				elif argr.args[1].is_num():
+				elif rhs.rhs.is_num():
 					return ADD(
-						NUM(argl.num + argr.args[1].num),
-						argr.args[0]
+						NUM(lhs.num + rhs.rhs.num),
+						rhs.lhs
 					)
-		elif argr.is_num() and not argl.is_leaf():
-			if len(argl.args) > 1:
-				if argl.args[0].is_num():
+		elif rhs.is_num() and not lhs.is_leaf():
+			if type(lhs) == ADD:
+				if lhs.lhs.is_num():
 					return ADD(
-						NUM(argr.num + argl.args[0].num),
-						argl.args[1]
+						NUM(rhs.num + lhs.lhs.num),
+						lhs.rhs
 					)
-				elif argl.args[1].is_num():
+				elif lhs.rhs.is_num():
 					return ADD(
-						NUM(argr.num + argl.args[1].num),
-						argl.args[0]
+						NUM(rhs.num + lhs.rhs.num),
+						lhs.lhs
 					)
+		elif not rhs.is_leaf() and not lhs.is_leaf():
+			if type(rhs) ==  ADD and type(lhs) == ADD:
+				if rhs.lhs.is_num() and lhs.rhs.is_num() and \
+				type(rhs.rhs) == READ and type(lhs.lhs) == READ:
+					return ADD(
+							NUM(rhs.lhs.num +  lhs.rhs.num),
+							ADD(rhs.rhs, lhs.lhs)
+						)
+				elif rhs.lhs.is_num() and lhs.lhs.is_num() and \
+				type(rhs.rhs) == READ and type(lhs.rhs) == READ:
+					return ADD(
+							NUM(rhs.lhs.num +  lhs.lhs.num),
+							ADD(rhs.rhs, lhs.rhs)
+						)
+				elif rhs.rhs.is_num() and lhs.rhs.is_num() and \
+				type(rhs.lhs) == READ and type(lhs.lhs) == READ:
+					return ADD(
+							NUM(rhs.rhs.num +  lhs.rhs.num),
+							ADD(rhs.lhs, lhs.lhs)
+						)
 
-		return ADD(argl, argr)
+				elif rhs.rhs.is_num() and lhs.lhs.is_num() and \
+				type(rhs.lhs) == READ and type(lhs.rhs) == READ:
+					return ADD(
+							NUM(rhs.rhs.num +  lhs.lhs.num),
+							ADD(rhs.lhs, lhs.rhs)
+						)
+
+		return ADD(lhs, rhs)
 
 class P:
 	def __init__(self, e):
-		self.args = [e]
+		self.expr = e
 		self.str = f"P({e})"
 
 	def show(self):
@@ -128,11 +154,11 @@ class P:
 		global RAND
 		if reset:
 			READ._db_cnt = RAND
-		ans = self.args[0].interp(db)
+		ans = self.expr.interp(db)
 		return ans
 
 	def optimize(self):
-		return P(self.args[0].optimize())
+		return P(self.expr.optimize())
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()

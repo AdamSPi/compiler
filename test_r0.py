@@ -32,9 +32,16 @@ def test_optimize():
 
 	assert P(ADD(NUM(7), ADD(READ(), NUM(8)))).optimize() == P(ADD(NUM(15), READ()))
 	assert P(ADD(ADD(READ(), NUM(8)), NUM(7))).optimize() == P(ADD(READ(), NUM(15)))
+	assert \
+		P(
+			ADD(
+				ADD(ADD(NUM(1), NUM(2)), READ()),
+				ADD(READ(), ADD(NUM(7), NUM(3)))
+			)
+		).optimize() == P(ADD(NUM(13), ADD(READ(), READ())))
 
 def test_interp_opt():
-	for n in range(10):
+	for n in range(12):
 		astn = gen(rand_r0_no_read, n)
 		assert astn.interp() == astn.optimize().interp()
 		rand_ast = gen(rand_r0, n)
