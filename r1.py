@@ -1,7 +1,5 @@
 from random import choice
-from r0 import rand_r0, rand_r0_no_read
-
-import string
+from string import ascii_letters
 
 RAND = choice([0,100])
 READ_COUNT = 0
@@ -23,13 +21,16 @@ class Expr:
 	def is_leaf(self):
 		return False
 
+	def is_simp(self):
+		return False
+
 	def interp(self, env, db):
 		pass
 
 	def is_var(self):
 		return False
 
-	def optimize(self):
+	def optimize(self, env):
 		return self
 
 class LET(Expr):
@@ -44,10 +45,15 @@ class LET(Expr):
 		new_env[self.var.val] = self.xe.interp(env, db)
 		return self.be.interp(new_env, db)
 
-	def optimize(self):
-		xe = self.xe.optimize()
-		be  =  self.be.optimize()
-		return LET(self.var, xe, be)
+	def optimize(self, env):
+		new_env = env.copy()
+		xe = self.xe.optimize(env)
+		new_env[self.var.val] = xe
+		if xe.is_simp():
+			return self.be.optimize(new_env)
+		else:
+			be = self.be.optimize(env)
+			return LET(self.var, xe, be)
 
 
 class VAR(Expr):
@@ -56,17 +62,22 @@ class VAR(Expr):
 		self.str = f"{self.val}"
 
 	def interp(self, env, db):
-		try:
-			return env[self.val]
-		except:
-			print("Variable not bound exception")
-			raise
+		return env[self.val]
 
 	def is_leaf(self):
 		return True
 
 	def is_var(self):
 		return True
+
+	def is_simp(self):
+		return True
+
+	def optimize(self, env):
+		try:
+			return env[self.val]
+		except KeyError:
+			return self
 
 class NUM(Expr):
 	def __init__(self, num):
@@ -77,6 +88,9 @@ class NUM(Expr):
 		return True
 
 	def is_leaf(self):
+		return True
+
+	def is_simp(self):
 		return True
 
 	def interp(self, env, db):
@@ -112,8 +126,8 @@ class NEG(Expr):
 	def interp(self, env, db):
 		return 0 - self.expr.interp(env, db)
 
-	def optimize(self):
-		expr = self.expr.optimize()
+	def optimize(self, env):
+		expr = self.expr.optimize(env)
 
 		if expr.is_num():
 			return NUM(-expr.num)
@@ -129,9 +143,9 @@ class ADD(Expr):
 	def interp(self, env, db):
 		return self.lhs.interp(env, db) + self.rhs.interp(env, db)
 
-	def optimize(self):
-		lhs = self.lhs.optimize()
-		rhs = self.rhs.optimize()
+	def optimize(self, env):
+		lhs = self.lhs.optimize(env)
+		rhs = self.rhs.optimize(env)
 
 		if lhs.is_num() and rhs.is_num():
 			return NUM(lhs.num + rhs.num)
@@ -203,7 +217,7 @@ class P:
 		return ans
 
 	def optimize(self):
-		return P(self.expr.optimize())
+		return P(self.expr.optimize({}))
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()
@@ -226,7 +240,7 @@ def rand_r1(n, vs=[]):
 	elif j == 1:
 		return ADD(rand_r1(n-1, vs), rand_r1(n-1, vs))
 	else:
-		x_prime = VAR(choice(string.ascii_letters))
+		x_prime = VAR(choice(ascii_letters))
 		vs_prime = vs + [x_prime]
 		return LET(x_prime, rand_r1(n-1, vs), rand_r1(n-1, vs_prime))
 
