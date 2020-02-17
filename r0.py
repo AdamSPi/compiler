@@ -22,7 +22,7 @@ class Expr:
 	def interp(self, db):
 		pass
 
-	def optimize(self):
+	def opt(self):
 		return self
 
 class NUM(Expr):
@@ -66,8 +66,8 @@ class NEG(Expr):
 	def interp(self, db):
 		return 0 - self.expr.interp(db)
 
-	def optimize(self):
-		expr = self.expr.optimize()
+	def opt(self):
+		expr = self.expr.opt()
 
 		if expr.is_num():
 			return NUM(-expr.num)
@@ -83,36 +83,36 @@ class ADD(Expr):
 	def interp(self, db):
 		return self.lhs.interp(db) + self.rhs.interp(db)
 
-	def optimize(self):
-		lhs = self.lhs.optimize()
-		rhs = self.rhs.optimize()
+	def opt(self):
+		lhs = self.lhs.opt()
+		rhs = self.rhs.opt()
 
 		if lhs.is_num() and rhs.is_num():
 			return NUM(lhs.num + rhs.num)
-		elif lhs.is_num() and not rhs.is_leaf():
-			if type(rhs) == ADD:
-				if rhs.lhs.is_num():
-					return ADD(
-						NUM(lhs.num + rhs.lhs.num),
-						rhs.rhs
-					)
-				elif rhs.rhs.is_num():
-					return ADD(
-						NUM(lhs.num + rhs.rhs.num),
-						rhs.lhs
-					)
-		elif rhs.is_num() and not lhs.is_leaf():
-			if type(lhs) == ADD:
-				if lhs.lhs.is_num():
-					return ADD(
-						NUM(rhs.num + lhs.lhs.num),
-						lhs.rhs
-					)
-				elif lhs.rhs.is_num():
-					return ADD(
-						NUM(rhs.num + lhs.rhs.num),
-						lhs.lhs
-					)
+		elif type(lhs) == NEG and type(rhs) == NEG:
+			return NEG(ADD(lhs.expr, rhs.expr))
+		elif lhs.is_num() and type(rhs) == ADD:
+			if rhs.lhs.is_num():
+				return ADD(
+					NUM(lhs.num + rhs.lhs.num),
+					rhs.rhs
+				)
+			elif rhs.rhs.is_num():
+				return ADD(
+					NUM(lhs.num + rhs.rhs.num),
+					rhs.lhs
+				)
+		elif rhs.is_num() and type(lhs) == ADD:
+			if lhs.lhs.is_num():
+				return ADD(
+					NUM(rhs.num + lhs.lhs.num),
+					lhs.rhs
+				)
+			elif lhs.rhs.is_num():
+				return ADD(
+					NUM(rhs.num + lhs.rhs.num),
+					lhs.lhs
+				)
 		elif type(rhs) ==  ADD and type(lhs) == ADD:
 			if rhs.lhs.is_num() and lhs.rhs.is_num() and \
 			type(rhs.rhs) == READ and type(lhs.lhs) == READ:
@@ -156,8 +156,8 @@ class P:
 		ans = self.expr.interp(db)
 		return ans
 
-	def optimize(self):
-		return P(self.expr.optimize())
+	def opt(self):
+		return P(self.expr.opt())
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()
