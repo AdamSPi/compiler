@@ -1,8 +1,7 @@
 from random import choice
 from string import ascii_letters
 
-RAND = choice([0,100])
-READ_COUNT = 0
+RAND = choice(range(100))
 
 # e := num | (read) | (-  e) | (+ e e)
 #    | var | let var := xe in be
@@ -21,10 +20,7 @@ class Expr:
 	def is_leaf(self):
 		return False
 
-	def is_simp(self):
-		return False
-
-	def interp(self, env, db):
+	def interp(self, env, db, inp):
 		pass
 
 	def is_var(self):
@@ -43,21 +39,22 @@ class LET(Expr):
 		self.be = be
 		self.str = f"LET({self.var}, {self.xe}, {self.be})"
 
-	def interp(self, env, db):
+	def interp(self, env, db, inp):
 		new_env = env.copy()
-		new_env[self.var.val] = self.xe.interp(env, db)
-		return self.be.interp(new_env, db)
+		new_env[self.var.val] = self.xe.interp(env, db, inp)
+		return self.be.interp(new_env, db, inp)
 
 	def opt(self, env):
-		new_env = env.copy()
+		b_env = {key:val for key, val in env.items() if key != self.var.val}
+		be = self.be.opt(b_env)
+		if be.is_unused(self.var):
+			return be
 		xe = self.xe.opt(env)
-		new_env[self.var.val] = xe
-		if xe.is_simp():
+		if xe.is_num():
+			new_env = env.copy()
+			new_env[self.var.val] = xe
 			return self.be.opt(new_env)
 		else:
-			be = self.be.opt(env)
-			if be.is_unused(self.var):
-				return be.opt(env)
 			return LET(self.var, xe, be)
 
 	def is_unused(self, var):
@@ -70,16 +67,13 @@ class VAR(Expr):
 		self.val = var
 		self.str = f"VAR('{self.val}')"
 
-	def interp(self, env, db):
+	def interp(self, env, db, inp):
 		return env[self.val]
 
 	def is_leaf(self):
 		return True
 
 	def is_var(self):
-		return True
-
-	def is_simp(self):
 		return True
 
 	def opt(self, env):
@@ -102,10 +96,7 @@ class NUM(Expr):
 	def is_leaf(self):
 		return True
 
-	def is_simp(self):
-		return True
-
-	def interp(self, env, db):
+	def interp(self, env, db, inp):
 		return self.num
 
 	def is_unused(self, var):
@@ -113,6 +104,7 @@ class NUM(Expr):
 
 class READ(Expr):
 	_db_cnt = RAND
+	_rd_cnt = 0
 
 	def __init__(self):
 		self.str = "READ()"
@@ -120,14 +112,16 @@ class READ(Expr):
 	def is_leaf(self):
 		return True
 
-	def interp(self, env, db):
-		global READ_COUNT
+	def interp(self, env, db, inp):
 		if db:
-			self.num = READ._db_cnt
-			READ._db_cnt = self.num - 1
+			if inp:
+				self.num = inp
+			else:
+				self.num = READ._db_cnt
+				READ._db_cnt = self.num - 1
 		else:
 			self.num = int(input("Input an integer: ",))
-		READ_COUNT = READ_COUNT + 1
+		READ._rd_cnt = READ._rd_cnt + 1
 		return self.num
 
 	def is_var(self):
@@ -141,8 +135,8 @@ class NEG(Expr):
 		self.expr = e
 		self.str = f"NEG({self.expr})"
 
-	def interp(self, env, db):
-		return 0 - self.expr.interp(env, db)
+	def interp(self, env, db, inp):
+		return 0 - self.expr.interp(env, db, inp)
 
 	def opt(self, env):
 		expr = self.expr.opt(env)
@@ -161,8 +155,8 @@ class ADD(Expr):
 		self.lhs, self.rhs = e1, e2
 		self.str = f"ADD({self.lhs}, {self.rhs})"
 
-	def interp(self, env, db):
-		return self.lhs.interp(env, db) + self.rhs.interp(env, db)
+	def interp(self, env, db, inp):
+		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
 
 	def opt(self, env):
 		lhs = self.lhs.opt(env)
@@ -233,11 +227,11 @@ class P:
 	def show(self):
 		print(self.str)
 
-	def interp(self, db=False, reset=False):
+	def interp(self, db=False, reset=False, inp=0):
 		global RAND
 		if reset:
 			READ._db_cnt = RAND
-		ans = self.expr.interp({}, db)
+		ans = self.expr.interp({}, db, inp)
 		return ans
 
 	def opt(self):
@@ -249,46 +243,38 @@ class P:
 def gen(f, n):
 	return P(f(n))
 
-def rand_r1(n, vs=[], v_chance=33):
+def rand_r1(n, vs=[]):
 	if n == 0:
-		i = choice(range(100))
-		if i < v_chance and vs:
+		if choice([0,1]) and vs:
 			return choice(vs)
 		else:
 			return NUM(choice(range(-256, 256))) if choice([0,1]) else READ()
-	j = choice(range(100))
-	if j <= 33:
-		return NEG(rand_r1(n-1, vs, v_chance+(100-v_chance)//4))
-	elif 33 < j <= 66:
+	j = choice([0,1,2])
+	if j == 0:
+		return NEG(rand_r1(n-1, vs))
+	elif j == 1:
 		return \
-			ADD(rand_r1(n-1, vs, v_chance+(100-v_chance)//4), 
-			rand_r1(n-1, vs, v_chance+(100-v_chance)//4))
+			ADD(rand_r1(n-1, vs), rand_r1(n-1, vs))
 	else:
 		x_prime = VAR(choice(ascii_letters))
 		vs_prime = vs + [x_prime]
 		return \
-			LET(x_prime, rand_r1(n-1, vs, v_chance), 
-			rand_r1(n-1, vs_prime, v_chance+(100-v_chance//2)))
+			LET(x_prime, rand_r1(n-1, vs), rand_r1(n-1, vs_prime))
 
-def rand_r1_no_read(n, vs=[], v_chance=33):
+def rand_r1_no_read(n, vs=[]):
 	if n == 0:
-		i = choice(range(100))
-		if i < v_chance and vs:
+		if choice([0,1]) and vs:
 			return choice(vs)
 		else:
 			return NUM(choice(range(-256, 256)))
-	j = choice(range(100))
-	if j <= 33:
-		return NEG(rand_r1_no_read(n-1, vs, v_chance+(100-v_chance)//4))
-	elif 33 < j <= 66:
+	j = choice([0,1,2])
+	if j == 0:
+		return NEG(rand_r1_no_read(n-1, vs))
+	elif j == 1:
 		return \
-			ADD(rand_r1_no_read(n-1, vs, v_chance+(100-v_chance)//4), 
-			rand_r1_no_read(n-1, vs, v_chance+(100-v_chance)//4))
+			ADD(rand_r1_no_read(n-1, vs), rand_r1_no_read(n-1, vs))
 	else:
 		x_prime = VAR(choice(ascii_letters))
 		vs_prime = vs + [x_prime]
 		return \
-			LET(x_prime, rand_r1_no_read(n-1, vs, v_chance), 
-			rand_r1_no_read(n-1, vs_prime, v_chance+(100-v_chance//2)))
-
-
+			LET(x_prime, rand_r1_no_read(n-1, vs), rand_r1_no_read(n-1, vs_prime))

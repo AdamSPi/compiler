@@ -1,7 +1,6 @@
 from random import choice
 
-RAND = choice([0,100])
-READ_COUNT = 0
+RAND = choice(range(100))
 
 # e := num | (read) | (-  e) | (+ e e)
 # p := (program any e)
@@ -41,6 +40,7 @@ class NUM(Expr):
 
 class READ(Expr):
 	_db_cnt = RAND
+	_rd_cnt = 0
 
 	def __init__(self):
 		self.str = "(read)"
@@ -52,10 +52,10 @@ class READ(Expr):
 		global READ_COUNT
 		if db:
 			self.num = READ._db_cnt
-			READ._db_cnt = READ._db_cnt - 1
+			READ._db_cnt = self.num - 1
 		else:
 			self.num = int(input("Input an integer: ",))
-		READ_COUNT = READ_COUNT + 1
+		READ._rd_cnt = READ._rd_cnt + 1
 		return self.num
 
 class NEG(Expr):

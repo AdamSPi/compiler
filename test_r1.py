@@ -38,6 +38,100 @@ rand_ast_opt = \
 		)
 	)
 
+rand_ast2 = \
+	P(
+		LET(
+			VAR('z'),
+			NEG(
+				ADD(
+					NUM(246),
+					NUM(137)
+				)
+			),
+			LET( # z -> -383
+				VAR('z'),
+				ADD(
+					VAR('z'),
+					READ()
+				),
+				NEG(VAR('z')) # z -> ADD(-383, READ())
+			)
+		)
+	)
+
+rand_ast2_opt = \
+	P(
+		LET(
+			VAR('z'),
+			ADD(
+				NUM(-383),
+				READ()
+			),
+			NEG(VAR('z'))
+		)
+	)
+
+
+rand_ast3 = \
+	P(
+		LET(
+			VAR('F'),
+			LET(
+				VAR('r'),
+				LET(
+					VAR('u'),
+					LET(
+						VAR('S'),
+						READ(),
+						READ()
+					),
+					NEG(NUM(-209))
+				),
+				LET(
+					VAR('E'),
+					LET(
+						VAR('v'),
+						VAR('r'),
+						READ()
+					),
+					NEG(VAR('E'))
+				)
+			),
+			LET(
+				VAR('x'),
+				NEG(NEG(VAR('F'))),
+				ADD(
+					LET(
+						VAR('F'),
+						READ(),
+						VAR('x')
+					),
+					NEG(NUM(146))
+				)
+			)
+		)
+	)
+
+rand_ast3_opt = \
+	P(
+		LET(
+			VAR('F'),
+			LET(
+				VAR('E'),
+				READ(),
+				NEG(VAR('E'))
+			),
+			LET(
+				VAR('x'),
+				VAR('F'),
+				ADD(
+					VAR('x'),
+					NUM(-146)
+				)
+			)
+		)
+	)
+
 def test_r1_interp():
 	assert ast0.interp() == 42
 	assert ast0.interp() == ast0.opt().interp()
@@ -49,10 +143,15 @@ def test_r1_interp():
 def test_r1_opt():
 	assert rand_ast.interp(True, True) == rand_ast.opt().interp(True, True)
 	assert rand_ast.opt().interp(True, True) == rand_ast_opt.interp(True, True)
+	assert rand_ast2.interp(True, True) == rand_ast2.opt().interp(True, True)
+	assert rand_ast2.opt().interp(True, True) == rand_ast2_opt.interp(True, True)
+	assert rand_ast3.interp(True, inp=1) == rand_ast3.opt().interp(True, inp=1)
+	assert rand_ast3.opt().interp(True, inp=1) == rand_ast3_opt.interp(True, inp=1)
 
 def test_rand_r1():
 	for n in range(16):
 		ast = gen(rand_r1, n)
-		ast.interp(True, True) == ast.opt().interp(True, True)
+		# need to take same input every read in case some reads are dropped by opt
+		assert ast.interp(True, inp=1) == ast.opt().interp(True, inp=1)
 		ast1 = gen(rand_r1_no_read, n)
-		ast1.interp(True, True) == ast1.opt().interp(True, True)
+		assert ast1.interp() == ast1.opt().interp()
