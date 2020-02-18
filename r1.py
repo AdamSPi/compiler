@@ -1,6 +1,5 @@
 from random import choice
 from string import ascii_letters
-import sys
 
 RAND = choice(range(100))
 
@@ -62,7 +61,7 @@ class LET(Expr):
 			return be
 		elif xe.is_simp(env_s):
 			env_p[self.var.val] = xe
-			return be.opt(env_p, env_s)
+			return self.be.opt(env_p, env_s)
 		else:
 			return LET(self.var, xe, be)
 
@@ -78,7 +77,11 @@ class VAR(Expr):
 		self.pp = f"VAR('{self.val}')"
 
 	def interp(self, env, db, inp):
-		return env[self.val]
+		try:
+			return env[self.val]
+		except KeyError:
+			print(f'Undefined var {self.val}')
+			raise SystemExit
 
 	def is_leaf(self):
 		return True
@@ -87,17 +90,23 @@ class VAR(Expr):
 		return True
 
 	def is_simp(self, env):
-		try:
-			return env[self.val].is_simp(env)
-		except RecursionError:
-			# it's pointing to itself
-			return True
+
+		def loops_to_itself(var):
+			if type(env[var.val]) != VAR:
+				return False
+			elif self.val == env[var.val].val:
+				return True
+			return loops_to_itself(env[var.val])
+
+		return loops_to_itself(self) or \
+			env[self.val].is_simp(env)
 
 	def opt(self, env, glob):
 		try:
-			return env[self.val]
+			return env[self.val] or glob[self.val]
 		except KeyError:
-			return glob[self.val]
+			print(f'Undefined var {self.val}')
+			raise SystemExit
 
 	def is_unused(self, var):
 		return not self.val == var.val

@@ -159,6 +159,58 @@ rand_ast4 = \
 		)
 	)
 
+rand_ast5 = \
+	P(
+		NEG(
+			LET(
+				VAR('w'),
+				NEG(
+					LET(
+						VAR('r'),
+						ADD(
+							LET(
+								VAR('I'),
+								READ(),
+								READ()
+							),
+							ADD(
+								NUM(-221), 
+								NUM(110)
+							)
+						),
+						LET(
+							VAR('l'),
+							NEG(NUM(194)),
+							LET(
+								VAR('G'),
+								NUM(-116),
+								VAR('G')
+							)
+						)
+					)
+				),
+				ADD(
+					LET(
+						VAR('J'),
+						NEG(NEG(VAR('w'))),
+						LET(
+							VAR('w'),
+							ADD(
+								VAR('J'),
+								VAR('w')
+							),
+							ADD(
+								VAR('w'),
+								VAR('J')
+							)
+						)
+					),
+					NEG(NEG(NEG(NUM(-101))))
+				)
+			)
+		)
+	)
+
 def test_r1_interp():
 	assert ast0.interp() == 42
 	assert ast0.interp() == ast0.opt().interp()
@@ -175,6 +227,7 @@ def test_r1_opt():
 	assert rand_ast3.interp(True, inp=1) == rand_ast3.opt().interp(True, inp=1)
 	assert rand_ast3.opt().interp(True, inp=1) == rand_ast3_opt.interp(True, inp=1)
 	assert rand_ast4.opt().interp(True, inp=1) == rand_ast4.interp(True, inp=1)
+	assert rand_ast5.opt().interp() == rand_ast5.interp(True)
 
 def test_rand_r1():
 	for n in range(16):
