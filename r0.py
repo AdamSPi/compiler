@@ -160,7 +160,7 @@ class P:
 		return P(self.expr.opt())
 
 	def __eq__(self, rhs):
-		return self.show() == rhs.show()
+		return self.str == rhs.str
 
 def gen(f, n):
 	return P(f(n))

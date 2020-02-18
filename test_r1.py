@@ -121,12 +121,39 @@ rand_ast3_opt = \
 				READ(),
 				NEG(VAR('E'))
 			),
-			LET(
-				VAR('x'),
+			ADD(
 				VAR('F'),
+				NUM(-146)
+			)
+		)
+	)
+
+rand_ast4 = \
+	P(
+		LET(
+			VAR('I'),
+			NEG(
 				ADD(
-					VAR('x'),
-					NUM(-146)
+					NEG(
+						NUM(-36)
+					),
+					LET(
+						VAR('H'),
+						READ(),
+						VAR('H')
+					)
+				)
+			),
+			LET(
+				VAR('c'),
+				NEG(NEG(VAR('I'))),
+				LET(
+					VAR('I'),
+					NEG(READ()),
+					ADD(
+						VAR('c'),
+						VAR('I')
+					)
 				)
 			)
 		)
@@ -147,6 +174,7 @@ def test_r1_opt():
 	assert rand_ast2.opt().interp(True, True) == rand_ast2_opt.interp(True, True)
 	assert rand_ast3.interp(True, inp=1) == rand_ast3.opt().interp(True, inp=1)
 	assert rand_ast3.opt().interp(True, inp=1) == rand_ast3_opt.interp(True, inp=1)
+	assert rand_ast4.opt().interp(True, inp=1) == rand_ast4.interp(True, inp=1)
 
 def test_rand_r1():
 	for n in range(16):

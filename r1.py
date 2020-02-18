@@ -1,5 +1,6 @@
 from random import choice
 from string import ascii_letters
+import sys
 
 RAND = choice(range(100))
 
@@ -12,7 +13,7 @@ class Expr:
 		pass
 
 	def __repr__(self):
-		return self.str
+		return self.pp
 
 	def is_num(self):
 		return False
@@ -26,7 +27,10 @@ class Expr:
 	def is_var(self):
 		return False
 
-	def opt(self, env):
+	def is_simp(self, env):
+		return False
+
+	def opt(self, env, glob):
 		return self
 
 	def is_unused(self, var):
@@ -37,23 +41,28 @@ class LET(Expr):
 		self.var = var
 		self.xe = xe
 		self.be = be
-		self.str = f"LET({self.var}, {self.xe}, {self.be})"
+		self.str = f"(let ([{self.var} {self.xe}]) {self.be})"
+		self.pp = f"LET({self.var}, {self.xe}, {self.be})"
 
 	def interp(self, env, db, inp):
-		new_env = env.copy()
-		new_env[self.var.val] = self.xe.interp(env, db, inp)
-		return self.be.interp(new_env, db, inp)
+		env_n = env.copy()
+		env_n[self.var.val] = self.xe.interp(env, db, inp)
+		return self.be.interp(env_n, db, inp)
 
-	def opt(self, env):
-		b_env = {key:val for key, val in env.items() if key != self.var.val}
-		be = self.be.opt(b_env)
+	def opt(self, env, glob):
+		env_p = env.copy()
+		env_p[self.var.val] = self.var
+		xe = self.xe.opt(env, glob)
+
+		env_s = glob.copy()
+		env_s[self.var.val] = xe
+		be = self.be.opt(env_p, env_s)
+
 		if be.is_unused(self.var):
 			return be
-		xe = self.xe.opt(env)
-		if xe.is_num():
-			new_env = env.copy()
-			new_env[self.var.val] = xe
-			return self.be.opt(new_env)
+		elif xe.is_simp(env_s):
+			env_p[self.var.val] = xe
+			return be.opt(env_p, env_s)
 		else:
 			return LET(self.var, xe, be)
 
@@ -65,7 +74,8 @@ class LET(Expr):
 class VAR(Expr):
 	def __init__(self, var):
 		self.val = var
-		self.str = f"VAR('{self.val}')"
+		self.str = f"{self.val}"
+		self.pp = f"VAR('{self.val}')"
 
 	def interp(self, env, db, inp):
 		return env[self.val]
@@ -76,11 +86,18 @@ class VAR(Expr):
 	def is_var(self):
 		return True
 
-	def opt(self, env):
+	def is_simp(self, env):
+		try:
+			return env[self.val].is_simp(env)
+		except RecursionError:
+			# it's pointing to itself
+			return True
+
+	def opt(self, env, glob):
 		try:
 			return env[self.val]
 		except KeyError:
-			return self
+			return glob[self.val]
 
 	def is_unused(self, var):
 		return not self.val == var.val
@@ -88,12 +105,16 @@ class VAR(Expr):
 class NUM(Expr):
 	def __init__(self, num):
 		self.num = num
-		self.str = f"NUM({self.num})"
+		self.str = f"{self.num}"
+		self.pp = f"NUM({self.num})"
 
 	def is_num(self):
 		return True
 
 	def is_leaf(self):
+		return True
+
+	def is_simp(self, env):
 		return True
 
 	def interp(self, env, db, inp):
@@ -107,7 +128,8 @@ class READ(Expr):
 	_rd_cnt = 0
 
 	def __init__(self):
-		self.str = "READ()"
+		self.str = "(read)"
+		self.pp = "READ()"
 
 	def is_leaf(self):
 		return True
@@ -133,13 +155,14 @@ class READ(Expr):
 class NEG(Expr):
 	def __init__(self, e):
 		self.expr = e
-		self.str = f"NEG({self.expr})"
+		self.str = f"(- {self.expr})"
+		self.pp = f"NEG({self.expr})"
 
 	def interp(self, env, db, inp):
 		return 0 - self.expr.interp(env, db, inp)
 
-	def opt(self, env):
-		expr = self.expr.opt(env)
+	def opt(self, env, glob):
+		expr = self.expr.opt(env, glob)
 
 		if expr.is_num():
 			return NUM(-expr.num)
@@ -153,14 +176,15 @@ class NEG(Expr):
 class ADD(Expr):
 	def __init__(self, e1, e2):
 		self.lhs, self.rhs = e1, e2
-		self.str = f"ADD({self.lhs}, {self.rhs})"
+		self.str = f"(+ {self.lhs} {self.rhs})"
+		self.pp = f"ADD({self.lhs}, {self.rhs})"
 
 	def interp(self, env, db, inp):
 		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
 
-	def opt(self, env):
-		lhs = self.lhs.opt(env)
-		rhs = self.rhs.opt(env)
+	def opt(self, env, glob):
+		lhs = self.lhs.opt(env, glob)
+		rhs = self.rhs.opt(env, glob)
 
 		if lhs.is_num() and rhs.is_num():
 			return NUM(lhs.num + rhs.num)
@@ -222,10 +246,11 @@ class ADD(Expr):
 class P:
 	def __init__(self, e):
 		self.expr = e
-		self.str = f"P({e})"
+		self.str = f"(program () {e})"
+		self.pp = f"P({e})"
 
 	def show(self):
-		print(self.str)
+		print(self.pp)
 
 	def interp(self, db=False, reset=False, inp=0):
 		global RAND
@@ -235,7 +260,7 @@ class P:
 		return ans
 
 	def opt(self):
-		return P(self.expr.opt({}))
+		return P(self.expr.opt({}, {}))
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()
