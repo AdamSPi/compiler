@@ -29,7 +29,10 @@ class Expr:
 	def is_simp(self, env):
 		return False
 
-	def opt(self, env, glob):
+	def opt(self, env):
+		return self
+
+	def uniqueify(self, env):
 		return self
 
 	def is_unused(self, var):
@@ -48,22 +51,26 @@ class LET(Expr):
 		env_n[self.var.val] = self.xe.interp(env, db, inp)
 		return self.be.interp(env_n, db, inp)
 
-	def opt(self, env, glob):
-		env_p = env.copy()
-		env_p[self.var.val] = self.var
-		xe = self.xe.opt(env, glob)
-
-		env_s = glob.copy()
-		env_s[self.var.val] = xe
-		be = self.be.opt(env_p, env_s)
-
+	def opt(self, env):
+		xe = self.xe.opt(env)
+		syms = env.copy()
+		syms[self.var.val] = xe
+		be = self.be.opt(syms)
 		if be.is_unused(self.var):
+			print(f"Warning: unused variable {self.var.val}")
 			return be
-		elif xe.is_simp(env_s):
-			env_p[self.var.val] = xe
-			return self.be.opt(env_p, env_s)
+		elif xe.is_simp(syms):
+			syms[self.var.val] = xe
+			return self.be.opt(syms)
 		else:
 			return LET(self.var, xe, be)
+
+
+	def uniqueify(self, env):
+		env_p = env.copy()
+		env_p[self.var.val] = env_p.setdefault(self.var.val, 0) + 1
+		new_var = VAR(self.var.val + str(env_p[self.var.val]))
+		return LET(new_var, self.xe.uniqueify(env), self.be.uniqueify(env_p))
 
 	def is_unused(self, var):
 		return self.xe.is_unused(var) and self.be.is_unused(var)
@@ -90,23 +97,19 @@ class VAR(Expr):
 		return True
 
 	def is_simp(self, env):
+		return True
 
-		def loops_to_itself(var):
-			if type(env[var.val]) != VAR:
-				return False
-			elif self.val == env[var.val].val:
-				return True
-			return loops_to_itself(env[var.val])
-
-		return loops_to_itself(self) or \
-			env[self.val].is_simp(env)
-
-	def opt(self, env, glob):
+	def opt(self, env):
 		try:
-			return env[self.val] or glob[self.val]
+			e = env[self.val]
+			return e if e.is_simp(env) else self
 		except KeyError:
 			print(f'Undefined var {self.val}')
 			raise SystemExit
+
+
+	def uniqueify(self, env):
+		return VAR(self.val + str(env[self.val]))
 
 	def is_unused(self, var):
 		return not self.val == var.val
@@ -170,14 +173,17 @@ class NEG(Expr):
 	def interp(self, env, db, inp):
 		return 0 - self.expr.interp(env, db, inp)
 
-	def opt(self, env, glob):
-		expr = self.expr.opt(env, glob)
+	def opt(self, env):
+		expr = self.expr.opt(env)
 
 		if expr.is_num():
 			return NUM(-expr.num)
 		elif type(expr) == NEG:
 			return expr.expr
 		return NEG(expr)
+
+	def uniqueify(self, env):
+		return NEG(self.expr.uniqueify(env))
 
 	def is_unused(self, var):
 		return self.expr.is_unused(var)
@@ -191,9 +197,9 @@ class ADD(Expr):
 	def interp(self, env, db, inp):
 		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
 
-	def opt(self, env, glob):
-		lhs = self.lhs.opt(env, glob)
-		rhs = self.rhs.opt(env, glob)
+	def opt(self, env):
+		lhs = self.lhs.opt(env)
+		rhs = self.rhs.opt(env)
 
 		if lhs.is_num() and rhs.is_num():
 			return NUM(lhs.num + rhs.num)
@@ -249,6 +255,9 @@ class ADD(Expr):
 
 		return ADD(lhs, rhs)
 
+	def uniqueify(self, env):
+		return ADD(self.lhs.uniqueify(env), self.rhs.uniqueify(env))
+
 	def is_unused(self, var):
 		return self.lhs.is_unused(var) and self.rhs.is_unused(var)
 
@@ -269,7 +278,10 @@ class P:
 		return ans
 
 	def opt(self):
-		return P(self.expr.opt({}, {}))
+		return P(self.expr.uniqueify({}).opt({}))
+
+	def uniqueify(self):
+		return P(self.expr.uniqueify({}))
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()

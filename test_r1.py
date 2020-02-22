@@ -227,7 +227,7 @@ def test_r1_opt():
 	assert rand_ast3.interp(True, inp=1) == rand_ast3.opt().interp(True, inp=1)
 	assert rand_ast3.opt().interp(True, inp=1) == rand_ast3_opt.interp(True, inp=1)
 	assert rand_ast4.opt().interp(True, inp=1) == rand_ast4.interp(True, inp=1)
-	assert rand_ast5.opt().interp() == rand_ast5.interp(True)
+	assert rand_ast5.opt().interp(True) == rand_ast5.interp(True)
 
 def test_rand_r1():
 	for n in range(16):
