@@ -101,8 +101,8 @@ class VAR(Expr):
 
 	def opt(self, env):
 		try:
-			e = env[self.val]
-			return e if e.is_simp(env) else self
+			val = env[self.val]
+			return val if val.is_simp(env) else self
 		except KeyError:
 			print(f'Undefined var {self.val}')
 			raise SystemExit
