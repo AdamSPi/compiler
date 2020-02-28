@@ -65,7 +65,6 @@ class LET(Expr):
 		else:
 			return LET(self.var, xe, be)
 
-
 	def uniqueify(self, env):
 		env_p = env.copy()
 		env_p[self.var.val] = env_p.setdefault(self.var.val, 0) + 1
@@ -106,7 +105,6 @@ class VAR(Expr):
 		except KeyError:
 			print(f'Undefined var {self.val}')
 			raise SystemExit
-
 
 	def uniqueify(self, env):
 		return VAR(self.val + str(env[self.val]))
