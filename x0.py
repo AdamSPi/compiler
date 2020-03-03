@@ -20,6 +20,9 @@ class NUM(ARG):
 	def __sub__(self, op):
 		return NUM(self.num - op.num)
 
+	def __eq__(self, op):
+		return self.num == op.num
+
 	def __neg__(self):
 		return NUM(-self.num)
 
@@ -29,13 +32,17 @@ class register(ARG):
 		self.str = f"%{self.name}"
 
 class DREF(ARG):
-	def __init__(self, reg, offset):
+	def __init__(self, reg, offset=0):
 		self.reg = reg
 		self.offset = offset
-		self.str = f"{self.reg}({self.offset})"
+		self.str = f"{self.reg}({self.offset})" if offset > 0 else f"({self.reg})"
 
 	def interp(self, ms):
-		return ms[self.reg] + NUM(self.offset)
+		val = ms[self.reg] + NUM(self.offset)
+		if val in ms:
+			return val
+		else:
+			return NUM(0)
 
 class VAR(ARG):
 	def __init__(self, n):
@@ -44,8 +51,8 @@ class VAR(ARG):
 
 
 # x86_64 register set
-rsi = register("rsi")
-rbi = register("rbi")
+rsp = register("rsi")
+rbp = register("rbi")
 rax = register("rax")
 rbx = register("rbx")
 rcx = register("rcx")
@@ -79,7 +86,11 @@ class ADD(INSTR):
 		self.str = f"addq {self.src} {self.dest}"
 
 	def interp(self, ms):
-		ms[self.dst] = ms[self.src] + ms[self.dst]
+		val =  self.dest.interp(ms)
+		if type(self.src) == NUM and type(self.dest) != NUM:
+			 ms[val] = self.src + ms[val]
+		else:
+			ms[val] = ms[self.src] + ms[val]
 		return ms
 
 class SUB(INSTR):
@@ -89,7 +100,11 @@ class SUB(INSTR):
 		self.str = f"subq {self.src} {self.dest}"
 
 	def interp(self, ms):
-		ms[self.dst] = ms[self.src] - ms[self.dst]
+		val =  self.dest.interp(ms)
+		if type(self.src) == NUM and type(self.dest) != NUM:
+			 ms[val] = ms[val] - self.src
+		else:
+			ms[val] = ms[val] - ms[self.src]
 		return ms
 
 class MOV(INSTR):
@@ -99,7 +114,7 @@ class MOV(INSTR):
 		self.str = f"movq {self.src} {self.dest}"
 
 	def interp(self, ms):
-		ms[self.dst] = ms[self.src]
+		ms[self.dest.interp(ms)] = self.src.interp(ms)
 		return ms
 
 class RET(INSTR):
@@ -122,16 +137,17 @@ class NEG(INSTR):
 class CALL(INSTR):
 	def __init__(self, label):
 		self.label = label
-		self.str = f"callq {self.label.name}"
+		self.str = f"callq {self.label}"
 
-	def interp(ms):
-		if self.label == 'read_int':
+	def interp(self, ms):
+		if self.label == "read_int":
 			ms[rax] = NUM(int(input("Input an integer: ",)))
+			return ms
 
 class JMP(INSTR):
 	def __init__(self, label):
 		self.label = label
-		self.str = f"jmp {self.label.name}"
+		self.str = f"jmp {self.label}"
 
 	def interp(self, ms):
 		return ms[self.label].interp(ms)
@@ -143,7 +159,7 @@ class PUSH(INSTR):
 
 	def interp(self, ms):
 		ms[rsp] = ms[rsp] - 8
-		ms[DREF(rsp, 0).interp(ms)]  = ms[self.src]
+		ms[DREF(rsp).interp(ms)]  = ms[self.src]
 		return ms
 
 class POP(INSTR):
@@ -152,16 +168,11 @@ class POP(INSTR):
 		self.str = f"popq {self.dest}"
 
 	def interp(self, ms):
-		ms[self.dest]  = ms[DREF(rsp, 0).interp(ms)]
+		ms[self.dest]  = ms[DREF(rsp).interp(ms)]
 		ms[rsp] = ms[rsp] + 8
 		return ms
 
 
-
-
-class LABEL:
-	def __init__(self, name):
-		self.name = name
 
 class BLCK:
 	def __init__(self, info, instr):
@@ -176,16 +187,26 @@ class BLCK:
 			ms = ins.interp(ms)
 		return ms
 
+	def print(self):
+		for ins in self.instr:
+			print(ins)
+
 
 
 
 class P:
-	def __init__(self):
-		self.info = {}
+	def __init__(self, info, ms):
+		self.info = info
 		# a dict of labels to blocks
-		self.map = {}
+		self.ms = ms
 
-	def interp(self, ms):
+	def interp(self, db=False):
 		# ms := (reg -> num) x (num(addr) -> num) x
 		#       (var -> num) x (label -> block)
-		return  ms[LABEL('main')].interp(ms)
+		return  self.ms["main"].interp(self.ms)
+
+	def print(self):
+		print('.section    __TEXT,__text')
+		print('.globl _main')
+		print('_main:')
+		self.ms["_main"].print()
