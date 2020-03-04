@@ -36,10 +36,3 @@ def test_x0_double():
 	assert x0_test.interp()[rax] == NUM(10)
 
 x0_test.print()
-
-drf_main_blck = BLCK({}, [
-		MOV(NUM(5), rax),
-		ADD(rax, rax),
-		RET()
-	]
-)

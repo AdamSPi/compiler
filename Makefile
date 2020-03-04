@@ -8,5 +8,9 @@ setup:
 	source venv/bin/activate; \
 	pip install -r requirements.txt; \
 	
+build:
+	as asm/double.asm -o asm/double.o
+	ld -e _main -macosx_version_min 10.10 -lSystem -arch x86_64 asm/double.o -o asm/dbl.out
+
 clean:
-	rm -rf venv/ .pytest_cache/ __pycache__/
+	rm -rf venv/ .pytest_cache/ __pycache__/ *.out
