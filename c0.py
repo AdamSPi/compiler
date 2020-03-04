@@ -104,3 +104,20 @@ class SEQ(TAIL):
 		self.expr = expr
 		self.str = f"(assign {self.var} {self.expr})"
 
+	def __repr__(self):
+		return self.str
+
+class P:
+	def __init__(self, env):
+		# a dict of labels to tails
+		self.env = env
+
+	def interp(self, db=False):
+		return  self.env["main"].interp({})
+
+	def print(self):
+		print('(program info ',)
+		for k,v in self.env.items():
+			print(f"{k} . {v}")
+		print(')')
+
