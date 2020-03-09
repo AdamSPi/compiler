@@ -236,3 +236,19 @@ def test_rand_r1():
 		assert ast.interp(True, inp=1) == ast.opt().interp(True, inp=1)
 		ast1 = gen(rand_r1_no_read, n)
 		assert ast1.interp() == ast1.opt().interp()
+
+def test_unique_ify():
+	pass
+
+rco_ast = P(\
+	ADD(
+		ADD(NUM(2), NUM(3)),
+		LET(VAR('X'), READ(), ADD(VAR('X'), VAR('X'))
+		)
+	)
+)
+
+def test_rcoify():
+	assert rco_ast.interp(True, True) == rco_ast.rcoify().interp(True, True)
+
+

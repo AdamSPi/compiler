@@ -112,8 +112,12 @@ class P:
 		# a dict of labels to tails
 		self.env = env
 
-	def interp(self, db=False):
-		return  self.env["main"].interp({})
+	def interp(self, db=False, reset=False, inp=0):
+		global RAND
+		if reset:
+			READ._db_cnt = RAND
+		ans = self.env['main'].interp({}, db, inp)
+		return ans
 
 	def print(self):
 		print('(program info ',)

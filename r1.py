@@ -7,6 +7,13 @@ RAND = choice(range(100))
 #    | var | let var := xe in be
 # p := (program any e)
 
+rco_cnt = -1
+
+def get_unq_var():
+	global rco_cnt
+	rco_cnt += 1
+	return 'rco' + str(rco_cnt)
+
 class Expr:
 	def __init__(self):
 		pass
@@ -35,8 +42,12 @@ class Expr:
 	def uniqueify(self, env):
 		return self
 
+	def rcoify(self, σ):
+		pass
+
 	def is_unused(self, var):
 		pass
+
 
 class LET(Expr):
 	def __init__(self, var, xe, be):
@@ -70,6 +81,13 @@ class LET(Expr):
 		env_p[self.var.val] = env_p.setdefault(self.var.val, 0) + 1
 		new_var = VAR(self.var.val + str(env_p[self.var.val]))
 		return LET(new_var, self.xe.uniqueify(env), self.be.uniqueify(env_p))
+
+	def rcoify(self, σ):
+		nvxe, epx = self.xe.rcoify(σ)
+		σp  = {**σ, **{self.var.val: epx}}
+		nvbe, epb = self.be.rcoify(σp)
+		nvp = {**nvxe,  **nvbe}
+		return (nvp, epb)
 
 	def is_unused(self, var):
 		return self.xe.is_unused(var) and self.be.is_unused(var)
@@ -109,6 +127,9 @@ class VAR(Expr):
 	def uniqueify(self, env):
 		return VAR(self.val + str(env[self.val]))
 
+	def rcoify(self, σ):
+		return ({}, σ[self.val] if self.val in σ else self)
+
 	def is_unused(self, var):
 		return not self.val == var.val
 
@@ -130,6 +151,9 @@ class NUM(Expr):
 	def interp(self, env, db, inp):
 		return self.num
 
+	def rcoify(self, σ):
+		return ({}, self)	
+
 	def is_unused(self, var):
 		return True
 
@@ -147,6 +171,9 @@ class READ(Expr):
 	def interp(self, env, db, inp):
 		if db:
 			if inp:
+				# running opt could cut read calls
+				# which could throw off test results
+				# this flag make read always return inp
 				self.num = inp
 			else:
 				self.num = READ._db_cnt
@@ -158,6 +185,11 @@ class READ(Expr):
 
 	def is_var(self):
 		return True
+
+	def rcoify(self, σ):
+		new_var = VAR(get_unq_var()) 
+		nv = {new_var.val: READ()}
+		return (nv, new_var)
 
 	def is_unused(self, var):
 		return True
@@ -182,6 +214,12 @@ class NEG(Expr):
 
 	def uniqueify(self, env):
 		return NEG(self.expr.uniqueify(env))
+
+	def rcoify(self, σ):
+		new_var = VAR(get_unq_var())
+		nvp, ep = self.expr.rcoify(σ)
+		nv = {new_var.val: NEG(ep)}
+		return ({**nvp, **nv}, new_var)
 
 	def is_unused(self, var):
 		return self.expr.is_unused(var)
@@ -256,6 +294,14 @@ class ADD(Expr):
 	def uniqueify(self, env):
 		return ADD(self.lhs.uniqueify(env), self.rhs.uniqueify(env))
 
+	def rcoify(self, σ):
+		new_var = VAR(get_unq_var())
+		nvl, epl = self.lhs.rcoify(σ)
+		nvr, epr = self.rhs.rcoify(σ)
+		nvp  = {**nvl,  **nvr}
+		nv = {new_var.val: ADD(epl, epr)}
+		return ({**nvp, **nv}, new_var)
+
 	def is_unused(self, var):
 		return self.lhs.is_unused(var) and self.rhs.is_unused(var)
 
@@ -280,6 +326,19 @@ class P:
 
 	def uniqueify(self):
 		return P(self.expr.uniqueify({}))
+
+	def rcoify(self):
+		def unwrap(v):
+			w =  v.copy()
+			# py3.7+ keys are stored in order added
+			k = list(w.keys())[0]
+			if len(v) == 1:
+				return LET(VAR(k), w[k], VAR(k))
+			ew = w[k]
+			w.pop(k)
+			return LET(VAR(k), ew, unwrap(w))
+		nv, e = self.expr.rcoify({})
+		return P(unwrap(nv))
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()

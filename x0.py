@@ -203,7 +203,7 @@ class P:
 	def interp(self, db=False):
 		# ms := (reg -> num) x (num(addr) -> num) x
 		#       (var -> num) x (label -> block)
-		return  self.ms["main"].interp(self.ms)
+		return  self.ms["_main"].interp(self.ms)
 
 	def print(self):
 		print('.section    __TEXT,__text')
