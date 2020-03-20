@@ -1,3 +1,6 @@
+from random import choice
+
+RAND = choice(range(100))
 
 class ARG:
 	def __init__(self):
@@ -6,7 +9,7 @@ class ARG:
 	def __repr__(self):
 		return self.str
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		return self
 
 class NUM(ARG):
@@ -37,7 +40,7 @@ class DREF(ARG):
 		self.offset = offset
 		self.str = f"{self.reg}({self.offset})" if offset > 0 else f"({self.reg})"
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		val = ms[self.reg] + NUM(self.offset)
 		if val in ms:
 			return val
@@ -76,7 +79,7 @@ class INSTR:
 	def __repr__(self):
 		return self.str
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		pass
 
 class ADD(INSTR):
@@ -85,8 +88,8 @@ class ADD(INSTR):
 		self.dest = dest
 		self.str = f"addq {self.src} {self.dest}"
 
-	def interp(self, ms):
-		val =  self.dest.interp(ms)
+	def interp(self, ms, db, inp):
+		val =  self.dest.interp(ms, db, inp)
 		if type(self.src) == NUM and type(self.dest) != NUM:
 			 ms[val] = self.src + ms[val]
 		else:
@@ -99,8 +102,8 @@ class SUB(INSTR):
 		self.dest = dest
 		self.str = f"subq {self.src} {self.dest}"
 
-	def interp(self, ms):
-		val =  self.dest.interp(ms)
+	def interp(self, ms, db, inp):
+		val =  self.dest.interp(ms, db, inp)
 		if type(self.src) == NUM and type(self.dest) != NUM:
 			 ms[val] = ms[val] - self.src
 		else:
@@ -113,15 +116,15 @@ class MOV(INSTR):
 		self.dest = dest
 		self.str = f"movq {self.src} {self.dest}"
 
-	def interp(self, ms):
-		ms[self.dest.interp(ms)] = self.src.interp(ms)
+	def interp(self, ms, db, inp):
+		ms[self.dest.interp(ms, db, inp)] = self.src.interp(ms, db, inp)
 		return ms
 
 class RET(INSTR):
 	def __init__(self):
 		self.str = "retq"
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		print(ms[rax])
 		return ms
 
@@ -130,18 +133,29 @@ class NEG(INSTR):
 		self.src = src
 		self.str = f"negq {self.src}"
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		ms[self.src] = -ms[self.src]
 		return ms
 
 class CALL(INSTR):
+	_db_cnt = RAND
+	_rd_cnt = 0
+
 	def __init__(self, label):
 		self.label = label
 		self.str = f"callq {self.label}"
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		if self.label == "read_int":
-			ms[rax] = NUM(int(input("Input an integer: ",)))
+			if db:
+				if inp:
+					ms[rax] = NUM(inp)
+				else:
+					ms[rax] = NUM(CALL._db_cnt)
+					CALL._db_cnt -= 1
+			else:
+				ms[rax] = NUM(int(input("Input an integer: ",)))
+			CALL._rd_cnt += 1
 			return ms
 
 class JMP(INSTR):
@@ -149,17 +163,17 @@ class JMP(INSTR):
 		self.label = label
 		self.str = f"jmp {self.label}"
 
-	def interp(self, ms):
-		return ms[self.label].interp(ms)
+	def interp(self, ms, db, inp):
+		return ms[self.label].interp(ms, db, inp)
 
 class PUSH(INSTR):
 	def __init__(self, src):
 		self.src = src
 		self.str = f"pushq {self.src}"
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		ms[rsp] = ms[rsp] - 8
-		ms[DREF(rsp).interp(ms)]  = ms[self.src]
+		ms[DREF(rsp).interp(ms, db, inp)]  = ms[self.src]
 		return ms
 
 class POP(INSTR):
@@ -167,8 +181,8 @@ class POP(INSTR):
 		self.dest = dest 
 		self.str = f"popq {self.dest}"
 
-	def interp(self, ms):
-		ms[self.dest]  = ms[DREF(rsp).interp(ms)]
+	def interp(self, ms, db, inp):
+		ms[self.dest]  = ms[DREF(rsp).interp(ms, db, inp)]
 		ms[rsp] = ms[rsp] + 8
 		return ms
 
@@ -180,11 +194,11 @@ class BLCK:
 		# a list of INSTR objects
 		self.instr = instr
 
-	def interp(self, ms):
+	def interp(self, ms, db, inp):
 		if not self.instr:
 			pass
 		for ins in self.instr:
-			ms = ins.interp(ms)
+			ms = ins.interp(ms, db, inp)
 		return ms
 
 	def print(self):
@@ -200,10 +214,13 @@ class P:
 		# a dict of labels to blocks
 		self.ms = ms
 
-	def interp(self, db=False):
+	def interp(self, db=False, reset=False, inp=0):
 		# ms := (reg -> num) x (num(addr) -> num) x
 		#       (var -> num) x (label -> block)
-		return  self.ms["_main"].interp(self.ms)
+		global RAND
+		if reset:
+			CALL._db_cnt = RAND
+		return  self.ms["_main"].interp(self.ms, db, inp)
 
 	def print(self):
 		print('.section    __TEXT,__text')

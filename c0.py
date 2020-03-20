@@ -7,16 +7,20 @@ stmt ::= (assign var exp)
 tail ::= (return exp) | (seq stmt tail)
 C0 ::= (program info ((label . tail)+))
 '''
+from random import choice
+
+RAND = choice(range(100))
 
 class Expr:
 	def __init__(self):
 		pass
 
+	def __repr__(self):
+		return self.str
+
 	def interp(self, env, db, inp):
 		return self
 
-	def __repr__(self):
-		return self.str
 
 class READ(Expr):
 	_db_cnt = RAND
@@ -58,6 +62,9 @@ class ARG(EXPR):
 	def __init__(self):
 		pass
 
+	def interp(self, env, db, inp):
+		pass
+
 class NUM(ARG):
 	def __init__(self, num):
 		self.num = num
@@ -75,10 +82,21 @@ class NUM(ARG):
 	def __neg__(self):
 		return NUM(-self.num)
 
+	def interp(self, env, db, inp):
+		return self.num
+
 class VAR(ARG):
 	def __init__(self, n):
 		self.name = n
 		self.str = f"{self.name}"
+
+	def interp(self, env, db, inp):
+		try:
+			return env[self.name]
+		except KeyError:
+			print(f'Undefined var {self.name}')
+			raise SystemExit
+
 
 class TAIL:
 	def __init__(self):
@@ -87,10 +105,16 @@ class TAIL:
 	def __repr__(self):
 		return self.str
 
+	def interp(self, env, db, inp):
+		pass
+
 class RET(TAIL):
 	def __init__(self, expr):
-		self.expr = expr
-		self.str = f"(return {self.expr})"
+		self.arg = arg
+		self.str = f"(return {self.arg})"
+
+	def interp(self, env, db, inp):
+		return self.arg.interp(env, db, inp)
 
 class SEQ(TAIL):
 	def __init__(self, stmt, tail):
@@ -98,14 +122,20 @@ class SEQ(TAIL):
 		self.tail = tail
 		self.str = f"(seq {self.stmt} {self.tail})"
 
+	def interp(self, env, db, inp):
+		self.stmt.interp(env, db, inp)
+		self.tail.interp(env, db, inp)
+
+
  class STMT:
 	def __init__(self, var, expr):
 		self.var = var
 		self.expr = expr
 		self.str = f"(assign {self.var} {self.expr})"
 
-	def __repr__(self):
-		return self.str
+	def interp(self, env, db, inp):
+		env[self.var.name] = self.expr.interp(env, db, inp)
+
 
 class P:
 	def __init__(self, env):
@@ -125,3 +155,5 @@ class P:
 			print(f"{k} . {v}")
 		print(')')
 
+def econ(r):
+	pass

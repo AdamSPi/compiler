@@ -322,23 +322,27 @@ class P:
 		return ans
 
 	def opt(self):
+		# running unqify before opt simplifies the opt code
+		# while retaining optimal output/////////////
 		return P(self.expr.uniqueify({}).opt({}))
 
 	def uniqueify(self):
 		return P(self.expr.uniqueify({}))
 
 	def rcoify(self):
-		def unwrap(v):
-			w =  v.copy()
+		global rco_cnt
+		rco_cnt = -1
+		def LETify(env):
+			if not env:
+				# empty new variable list so already rco-ed
+				return e
 			# py3.7+ keys are stored in order added
-			k = list(w.keys())[0]
-			if len(v) == 1:
-				return LET(VAR(k), w[k], VAR(k))
-			ew = w[k]
-			w.pop(k)
-			return LET(VAR(k), ew, unwrap(w))
+			k = next(iter(env))
+			if len(env) == 1:
+				return LET(VAR(k), env[k], VAR(k))
+			return LET(VAR(k), env.pop(k), LETify(env))
 		nv, e = self.expr.rcoify({})
-		return P(unwrap(nv))
+		return P(LETify(nv))
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()

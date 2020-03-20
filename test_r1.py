@@ -238,7 +238,11 @@ def test_rand_r1():
 		assert ast1.interp() == ast1.opt().interp()
 
 def test_unique_ify():
-	pass
+	assert rand_ast.interp(True, True) == rand_ast.uniqueify().interp(True, True)
+	assert rand_ast2.interp(True, True) == rand_ast2.uniqueify().interp(True, True)
+	assert rand_ast3.interp(True, True) == rand_ast3.uniqueify().interp(True, True)
+	assert rand_ast4.interp(True, True) == rand_ast4.uniqueify().interp(True, True)
+	assert rand_ast5.interp(True, True) == rand_ast5.uniqueify().interp(True, True)
 
 rco_ast = P(\
 	ADD(
@@ -248,7 +252,72 @@ rco_ast = P(\
 	)
 )
 
+rco_ast_hand = P(\
+	LET(
+		VAR('rco1'),
+		ADD(NUM(2), NUM(3)),
+		LET(
+			VAR('rco2'),
+			READ(),
+			LET(
+				VAR('rco3'),
+				ADD(VAR('rco2'), VAR('rco2')),
+				LET(
+					VAR('rco0'),
+					ADD(VAR('rco1'), VAR('rco3')),
+					VAR('rco0')
+				)
+			)
+		)
+	)
+)
+
 def test_rcoify():
 	assert rco_ast.interp(True, True) == rco_ast.rcoify().interp(True, True)
+	assert rco_ast_hand.interp(True, True) == rco_ast.rcoify().interp(True, True)
+
+	assert rand_ast.interp(True, True) == rand_ast.rcoify().interp(True, True)
+	assert rand_ast2.interp(True, True) == rand_ast2.rcoify().interp(True, True)
+	assert rand_ast3.interp(True, True) == rand_ast3.rcoify().interp(True, True)
+	assert rand_ast4.interp(True, True) == rand_ast4.rcoify().interp(True, True)
+	assert rand_ast5.interp(True, True) == rand_ast5.rcoify().interp(True, True)
+
+	assert rand_ast_opt.interp(True, True) == rand_ast_opt.rcoify().interp(True, True)
+	assert rand_ast2_opt.interp(True, True) == rand_ast2_opt.rcoify().interp(True, True)
+	assert rand_ast3_opt.interp(True, True) == rand_ast3_opt.rcoify().interp(True, True)
+
+	assert rco_ast.opt().interp(True, True) == rco_ast.opt().rcoify().interp(True, True)
+	assert rand_ast.opt().interp(True, True) == rand_ast.opt().rcoify().interp(True, True)
+	assert rand_ast2.opt().interp(True, True) == rand_ast2.opt().rcoify().interp(True, True)
+	assert rand_ast3.opt().interp(True, inp=1) == rand_ast3.opt().rcoify().interp(True, inp=1)
+	assert rand_ast4.opt().interp(True, inp=1) == rand_ast4.opt().rcoify().interp(True, inp=1)
+	assert rand_ast5.opt().interp(True, True) == rand_ast5.opt().rcoify().interp(True, True)
+
+def is_rco_form(e):
+	if type(e) in (VAR, NUM):
+		return True
+	elif type(e) in (READ, NEG, ADD):
+		if type(e) == NEG:
+			if type(e.expr) in (VAR, NUM):
+				return True
+			return False
+		elif type(e) == ADD:
+			if  type(e.rhs) in (VAR, NUM) and \
+				type(e.lhs) in (VAR, NUM):
+			   return True
+			return False
+		return True if type(e) == READ else False
+	elif type(e) == LET:
+		return is_rco_form(e.be) and is_rco_form(e.xe)
+		
+
+
+def test_rand_rcoify():
+	for n in range(12):
+		ast = gen(rand_r1, n)
+		ast_opt = ast.opt()
+		ast_rco = ast_opt.rcoify()
+		assert ast_opt.interp(True, True) == ast_rco.interp(True, True)
+		assert is_rco_form(ast_rco.expr)
 
 
