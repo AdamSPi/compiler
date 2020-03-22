@@ -7,7 +7,7 @@ rco_ast = P(\
 	)
 )
 # import pdb; pdb.set_trace()
-rco_ast.rcoify().show()
+# rco_ast.rcoify().show()
 
 P(
 	LET(VAR('rco0'), ADD(NUM(2), NUM(3)),
@@ -18,3 +18,10 @@ P(
 		)
 	)
 )
+
+rco_ast.pprint()
+rco_ast.uniqueify().rcoify().pprint()
+rco_ast.to_c().pprint()
+print(rco_ast.interp(True, True))
+print(rco_ast.uniqueify().rcoify().interp(True, True))
+print(rco_ast.to_c().interp(True, True))

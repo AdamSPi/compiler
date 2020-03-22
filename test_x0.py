@@ -30,7 +30,7 @@ dbl_main_blck = BLCK({}, [
 dbl_ms = init_ms.copy()
 dbl_ms['_main'] = dbl_main_blck
 
-x0_test = P({}, dbl_ms)
+x0_test = X({}, dbl_ms)
 
 def test_x0_double():
 	assert x0_test.interp()[rax] == NUM(10)
@@ -45,7 +45,7 @@ read_dubl_main_blck = BLCK({}, [
 read_ms = init_ms.copy()
 read_ms['_main'] = read_dubl_main_blck
 
-x0_test2 = P({}, read_ms)
+x0_test2 = X({}, read_ms)
 
 def test_x0_input():
 	assert x0_test2.interp(True, True)[rax] == NUM(2 * RAND)

@@ -1,6 +1,4 @@
-from random import choice
-
-RAND = choice(range(100))
+from rand import RAND
 
 class ARG:
 	def __init__(self):
@@ -208,7 +206,7 @@ class BLCK:
 
 
 
-class P:
+class X:
 	def __init__(self, info, ms):
 		self.info = info
 		# a dict of labels to blocks

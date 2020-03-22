@@ -1,7 +1,7 @@
 from random import choice
 from string import ascii_letters
-
-RAND = choice(range(100))
+from rand import RAND
+from c0 import *
 
 # e := num | (read) | (-  e) | (+ e e)
 #    | var | let var := xe in be
@@ -12,7 +12,7 @@ rco_cnt = -1
 def get_unq_var():
 	global rco_cnt
 	rco_cnt += 1
-	return 'rco' + str(rco_cnt)
+	return 'tmp.' + str(rco_cnt)
 
 class Expr:
 	def __init__(self):
@@ -45,6 +45,9 @@ class Expr:
 	def rcoify(self, σ):
 		pass
 
+	def expcon(self):
+		pass
+
 	def is_unused(self, var):
 		pass
 
@@ -54,8 +57,8 @@ class LET(Expr):
 		self.var = var
 		self.xe = xe
 		self.be = be
-		self.str = f"(let ([{self.var} {self.xe}]) {self.be})"
-		self.pp = f"LET({self.var}, {self.xe}, {self.be})"
+		self.pp = f"\n(let ([{self.var} {self.xe}]) {self.be})"
+		self.str = f"LET({self.var}, {self.xe}, {self.be})"
 
 	def interp(self, env, db, inp):
 		env_n = env.copy()
@@ -89,6 +92,13 @@ class LET(Expr):
 		nvp = {**nvxe,  **nvbe}
 		return (nvp, epb)
 
+	def expcon(self):
+		return SEQ(
+				STMT(self.var.expcon(), self.xe.expcon()),
+				self.be.expcon() if type(self.be) == LET else \
+				RET(self.be.expcon())
+			)
+
 	def is_unused(self, var):
 		return self.xe.is_unused(var) and self.be.is_unused(var)
 
@@ -97,8 +107,8 @@ class LET(Expr):
 class VAR(Expr):
 	def __init__(self, var):
 		self.val = var
-		self.str = f"{self.val}"
-		self.pp = f"VAR('{self.val}')"
+		self.pp = f"{self.val}"
+		self.str = f"VAR('{self.val}')"
 
 	def interp(self, env, db, inp):
 		try:
@@ -130,14 +140,17 @@ class VAR(Expr):
 	def rcoify(self, σ):
 		return ({}, σ[self.val] if self.val in σ else self)
 
+	def expcon(self):
+		return cVAR(self.val)
+
 	def is_unused(self, var):
 		return not self.val == var.val
 
 class NUM(Expr):
 	def __init__(self, num):
 		self.num = num
-		self.str = f"{self.num}"
-		self.pp = f"NUM({self.num})"
+		self.pp = f"{self.num}"
+		self.str = f"NUM({self.num})"
 
 	def is_num(self):
 		return True
@@ -152,7 +165,10 @@ class NUM(Expr):
 		return self.num
 
 	def rcoify(self, σ):
-		return ({}, self)	
+		return ({}, self)
+
+	def expcon(self):
+		return cNUM(self.num)
 
 	def is_unused(self, var):
 		return True
@@ -162,8 +178,8 @@ class READ(Expr):
 	_rd_cnt = 0
 
 	def __init__(self):
-		self.str = "(read)"
-		self.pp = "READ()"
+		self.pp = "(read)"
+		self.str = "READ()"
 
 	def is_leaf(self):
 		return True
@@ -191,14 +207,17 @@ class READ(Expr):
 		nv = {new_var.val: READ()}
 		return (nv, new_var)
 
+	def expcon(self):
+		return cREAD()
+
 	def is_unused(self, var):
 		return True
 
 class NEG(Expr):
 	def __init__(self, e):
 		self.expr = e
-		self.str = f"(- {self.expr})"
-		self.pp = f"NEG({self.expr})"
+		self.pp = f"(- {self.expr})"
+		self.str = f"NEG({self.expr})"
 
 	def interp(self, env, db, inp):
 		return 0 - self.expr.interp(env, db, inp)
@@ -221,14 +240,17 @@ class NEG(Expr):
 		nv = {new_var.val: NEG(ep)}
 		return ({**nvp, **nv}, new_var)
 
+	def expcon(self):
+		return cNEG(self.expr.expcon())
+
 	def is_unused(self, var):
 		return self.expr.is_unused(var)
 
 class ADD(Expr):
 	def __init__(self, e1, e2):
 		self.lhs, self.rhs = e1, e2
-		self.str = f"(+ {self.lhs} {self.rhs})"
-		self.pp = f"ADD({self.lhs}, {self.rhs})"
+		self.pp = f"(+ {self.lhs} {self.rhs})"
+		self.str = f"ADD({self.lhs}, {self.rhs})"
 
 	def interp(self, env, db, inp):
 		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
@@ -302,16 +324,19 @@ class ADD(Expr):
 		nv = {new_var.val: ADD(epl, epr)}
 		return ({**nvp, **nv}, new_var)
 
+	def expcon(self):
+		return cADD(self.lhs.expcon(), self.rhs.expcon())
+
 	def is_unused(self, var):
 		return self.lhs.is_unused(var) and self.rhs.is_unused(var)
 
 class P:
 	def __init__(self, e):
 		self.expr = e
-		self.str = f"(program () {e})"
-		self.pp = f"P({e})"
+		self.pp = f"(program () {e}\n)"
+		self.str = f"P({e})"
 
-	def show(self):
+	def pprint(self):
 		print(self.pp)
 
 	def interp(self, db=False, reset=False, inp=0):
@@ -343,6 +368,13 @@ class P:
 			return LET(VAR(k), env.pop(k), LETify(env))
 		nv, e = self.expr.rcoify({})
 		return P(LETify(nv))
+
+	def expcon(self):
+		return C({'main': self.expr.expcon()})
+
+	def to_c(self, opt=0):
+		return self.opt().rcoify().expcon() if opt else \
+			   self.uniqueify().rcoify().expcon()
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()

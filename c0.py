@@ -8,10 +8,9 @@ tail ::= (return exp) | (seq stmt tail)
 C0 ::= (program info ((label . tail)+))
 '''
 from random import choice
+from rand import RAND
 
-RAND = choice(range(100))
-
-class Expr:
+class cExpr:
 	def __init__(self):
 		pass
 
@@ -22,7 +21,7 @@ class Expr:
 		return self
 
 
-class READ(Expr):
+class cREAD(cExpr):
 	_db_cnt = RAND
 	_rd_cnt = 0
 
@@ -34,14 +33,14 @@ class READ(Expr):
 			if inp:
 				self.num = inp
 			else:
-				self.num = READ._db_cnt
-				READ._db_cnt = self.num - 1
+				self.num = cREAD._db_cnt
+				cREAD._db_cnt = self.num - 1
 		else:
 			self.num = int(input("Input an integer: ",))
-		READ._rd_cnt = READ._rd_cnt + 1
+		cREAD._rd_cnt = cREAD._rd_cnt + 1
 		return self.num
 
-class NEG(Expr):
+class cNEG(cExpr):
 	def __init__(self, e):
 		self.expr = e
 		self.str = f"(- {self.expr})"
@@ -49,7 +48,7 @@ class NEG(Expr):
 	def interp(self, env, db, inp):
 		return 0 - self.expr.interp(env, db, inp)
 
-class ADD(Expr):
+class cADD(cExpr):
 	def __init__(self, e1, e2):
 		self.lhs, self.rhs = e1, e2
 		self.str = f"(+ {self.lhs} {self.rhs})"
@@ -58,14 +57,14 @@ class ADD(Expr):
 		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
 
 
-class ARG(EXPR):
+class ARG(cExpr):
 	def __init__(self):
 		pass
 
 	def interp(self, env, db, inp):
 		pass
 
-class NUM(ARG):
+class cNUM(ARG):
 	def __init__(self, num):
 		self.num = num
 		self.str = f"{self.num}"
@@ -85,7 +84,7 @@ class NUM(ARG):
 	def interp(self, env, db, inp):
 		return self.num
 
-class VAR(ARG):
+class cVAR(ARG):
 	def __init__(self, n):
 		self.name = n
 		self.str = f"{self.name}"
@@ -109,7 +108,7 @@ class TAIL:
 		pass
 
 class RET(TAIL):
-	def __init__(self, expr):
+	def __init__(self, arg):
 		self.arg = arg
 		self.str = f"(return {self.arg})"
 
@@ -120,14 +119,14 @@ class SEQ(TAIL):
 	def __init__(self, stmt, tail):
 		self.stmt = stmt
 		self.tail = tail
-		self.str = f"(seq {self.stmt} {self.tail})"
+		self.str = f"(seq {self.stmt}\n{self.tail})"
 
 	def interp(self, env, db, inp):
 		self.stmt.interp(env, db, inp)
-		self.tail.interp(env, db, inp)
+		return self.tail.interp(env, db, inp)
 
 
- class STMT:
+class STMT(TAIL):
 	def __init__(self, var, expr):
 		self.var = var
 		self.expr = expr
@@ -136,8 +135,8 @@ class SEQ(TAIL):
 	def interp(self, env, db, inp):
 		env[self.var.name] = self.expr.interp(env, db, inp)
 
-
-class P:
+  
+class C:
 	def __init__(self, env):
 		# a dict of labels to tails
 		self.env = env
@@ -145,14 +144,14 @@ class P:
 	def interp(self, db=False, reset=False, inp=0):
 		global RAND
 		if reset:
-			READ._db_cnt = RAND
+			cREAD._db_cnt = RAND
 		ans = self.env['main'].interp({}, db, inp)
 		return ans
 
-	def print(self):
+	def pprint(self):
 		print('(program info ',)
 		for k,v in self.env.items():
-			print(f"{k} . {v}")
+			print(f"{k} .\n{v}")
 		print(')')
 
 def econ(r):
