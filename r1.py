@@ -82,7 +82,7 @@ class LET(Expr):
 	def uniqueify(self, env):
 		env_p = env.copy()
 		env_p[self.var.val] = env_p.setdefault(self.var.val, 0) + 1
-		new_var = VAR(self.var.val + str(env_p[self.var.val]))
+		new_var = VAR(self.var.val + '.' + str(env_p[self.var.val]))
 		return LET(new_var, self.xe.uniqueify(env), self.be.uniqueify(env_p))
 
 	def rcoify(self, σ):
@@ -135,7 +135,7 @@ class VAR(Expr):
 			raise SystemExit
 
 	def uniqueify(self, env):
-		return VAR(self.val + str(env[self.val]))
+		return VAR(self.val + '.' + str(env[self.val]))
 
 	def rcoify(self, σ):
 		return ({}, σ[self.val] if self.val in σ else self)
@@ -370,7 +370,7 @@ class P:
 		return P(LETify(nv))
 
 	def expcon(self):
-		return C({'main': self.expr.expcon()})
+		return C({'locals': []}, {'main': self.expr.expcon()})
 
 	def to_c(self, opt=0):
 		return self.opt().rcoify().expcon() if opt else \

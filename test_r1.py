@@ -315,6 +315,8 @@ def is_rco_form(e):
 def test_rand_rcoify():
 	for n in range(12):
 		ast = gen(rand_r1, n)
+		# if ast has unused variables rcoify produces wrong output
+		# so we optimize first
 		ast_opt = ast.opt()
 		ast_rco = ast_opt.rcoify()
 		assert ast_opt.interp(True, True) == ast_rco.interp(True, True)

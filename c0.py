@@ -57,14 +57,14 @@ class cADD(cExpr):
 		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
 
 
-class ARG(cExpr):
+class cARG(cExpr):
 	def __init__(self):
 		pass
 
 	def interp(self, env, db, inp):
 		pass
 
-class cNUM(ARG):
+class cNUM(cARG):
 	def __init__(self, num):
 		self.num = num
 		self.str = f"{self.num}"
@@ -84,7 +84,7 @@ class cNUM(ARG):
 	def interp(self, env, db, inp):
 		return self.num
 
-class cVAR(ARG):
+class cVAR(cARG):
 	def __init__(self, n):
 		self.name = n
 		self.str = f"{self.name}"
@@ -107,6 +107,9 @@ class TAIL:
 	def interp(self, env, db, inp):
 		pass
 
+	def uncover_locs(self):
+		pass
+
 class RET(TAIL):
 	def __init__(self, arg):
 		self.arg = arg
@@ -114,6 +117,9 @@ class RET(TAIL):
 
 	def interp(self, env, db, inp):
 		return self.arg.interp(env, db, inp)
+
+	def uncover_locs(self):
+		return []
 
 class SEQ(TAIL):
 	def __init__(self, stmt, tail):
@@ -125,6 +131,9 @@ class SEQ(TAIL):
 		self.stmt.interp(env, db, inp)
 		return self.tail.interp(env, db, inp)
 
+	def uncover_locs(self):
+		return self.stmt.uncover_locs() + self.tail.uncover_locs()
+
 
 class STMT(TAIL):
 	def __init__(self, var, expr):
@@ -135,9 +144,13 @@ class STMT(TAIL):
 	def interp(self, env, db, inp):
 		env[self.var.name] = self.expr.interp(env, db, inp)
 
+	def uncover_locs(self):
+		return [self.var]
+
   
 class C:
-	def __init__(self, env):
+	def __init__(self, info, env):
+		self.info = info
 		# a dict of labels to tails
 		self.env = env
 
@@ -148,8 +161,11 @@ class C:
 		ans = self.env['main'].interp({}, db, inp)
 		return ans
 
+	def uncover_locs(self):
+		self.info = {'locals': self.env['main'].uncover_locs()}
+
 	def pprint(self):
-		print('(program info ',)
+		print(f"(program\n(locals . {self.info['locals']})",)
 		for k,v in self.env.items():
 			print(f"{k} .\n{v}")
 		print(')')

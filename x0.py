@@ -1,6 +1,6 @@
 from rand import RAND
 
-class ARG:
+class xARG:
 	def __init__(self):
 		pass
 
@@ -10,29 +10,29 @@ class ARG:
 	def interp(self, ms, db, inp):
 		return self
 
-class NUM(ARG):
+class xNUM(xARG):
 	def __init__(self, num):
 		self.num = num
 		self.str = f"${self.num}"
 
 	def __add__(self, op):
-		return NUM(self.num + op.num)
+		return xNUM(self.num + op.num)
 
 	def __sub__(self, op):
-		return NUM(self.num - op.num)
+		return xNUM(self.num - op.num)
 
 	def __eq__(self, op):
 		return self.num == op.num
 
 	def __neg__(self):
-		return NUM(-self.num)
+		return xNUM(-self.num)
 
-class register(ARG):
+class register(xARG):
 	def __init__(self, name):
 		self.name = name
 		self.str = f"%{self.name}"
 
-class DREF(ARG):
+class DREF(xARG):
 	def __init__(self, reg, offset=0):
 		self.reg = reg
 		self.offset = offset
@@ -43,9 +43,9 @@ class DREF(ARG):
 		if val in ms:
 			return val
 		else:
-			return NUM(0)
+			return xNUM(0)
 
-class VAR(ARG):
+class xVAR(xARG):
 	def __init__(self, n):
 		self.name = n
 		self.str = f"{self.name}"
@@ -80,7 +80,7 @@ class INSTR:
 	def interp(self, ms, db, inp):
 		pass
 
-class ADD(INSTR):
+class xADD(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
 		self.dest = dest
@@ -88,13 +88,13 @@ class ADD(INSTR):
 
 	def interp(self, ms, db, inp):
 		val =  self.dest.interp(ms, db, inp)
-		if type(self.src) == NUM and type(self.dest) != NUM:
+		if type(self.src) == xNUM and type(self.dest) != xNUM:
 			 ms[val] = self.src + ms[val]
 		else:
 			ms[val] = ms[self.src] + ms[val]
 		return ms
 
-class SUB(INSTR):
+class xSUB(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
 		self.dest = dest
@@ -102,7 +102,7 @@ class SUB(INSTR):
 
 	def interp(self, ms, db, inp):
 		val =  self.dest.interp(ms, db, inp)
-		if type(self.src) == NUM and type(self.dest) != NUM:
+		if type(self.src) == xNUM and type(self.dest) != xNUM:
 			 ms[val] = ms[val] - self.src
 		else:
 			ms[val] = ms[val] - ms[self.src]
@@ -118,7 +118,7 @@ class MOV(INSTR):
 		ms[self.dest.interp(ms, db, inp)] = self.src.interp(ms, db, inp)
 		return ms
 
-class RET(INSTR):
+class xRET(INSTR):
 	def __init__(self):
 		self.str = "retq"
 
@@ -126,7 +126,7 @@ class RET(INSTR):
 		print(ms[rax])
 		return ms
 
-class NEG(INSTR):
+class xNEG(INSTR):
 	def __init__(self, src):
 		self.src = src
 		self.str = f"negq {self.src}"
@@ -147,12 +147,12 @@ class CALL(INSTR):
 		if self.label == "read_int":
 			if db:
 				if inp:
-					ms[rax] = NUM(inp)
+					ms[rax] = xNUM(inp)
 				else:
-					ms[rax] = NUM(CALL._db_cnt)
+					ms[rax] = xNUM(CALL._db_cnt)
 					CALL._db_cnt -= 1
 			else:
-				ms[rax] = NUM(int(input("Input an integer: ",)))
+				ms[rax] = xNUM(int(input("Input an integer: ",)))
 			CALL._rd_cnt += 1
 			return ms
 
