@@ -39,11 +39,8 @@ class DREF(xARG):
 		self.str = f"{self.reg}({self.offset})" if offset > 0 else f"({self.reg})"
 
 	def interp(self, ms, db, inp):
-		val = ms[self.reg] + NUM(self.offset)
-		if val in ms:
-			return val
-		else:
-			return xNUM(0)
+		val = ms[self.reg] + xNUM(self.offset)
+		return ms.getdefault(val, xNUM(0))
 
 class xVAR(xARG):
 	def __init__(self, n):
@@ -199,18 +196,34 @@ class BLCK:
 			ms = ins.interp(ms, db, inp)
 		return ms
 
-	def print(self):
+	def pprint(self):
 		for ins in self.instr:
 			print(ins)
 
-
-
+init_ms = {
+	rsp: xNUM(0),
+	rbp: xNUM(0),
+	rax: xNUM(0),
+	rbx: xNUM(0),
+	rcx: xNUM(0),
+	rdx: xNUM(0),
+	rsi: xNUM(0),
+	rdi: xNUM(0),
+	r8 : xNUM(0),
+	r9 : xNUM(0),
+	r10: xNUM(0),
+	r11: xNUM(0),
+	r12: xNUM(0),
+	r13: xNUM(0),
+	r14: xNUM(0),
+	r15: xNUM(0),
+}
 
 class X:
 	def __init__(self, info, ms):
 		self.info = info
 		# a dict of labels to blocks
-		self.ms = ms
+		self.ms = {**init_ms, **ms}
 
 	def interp(self, db=False, reset=False, inp=0):
 		# ms := (reg -> num) x (num(addr) -> num) x
@@ -223,5 +236,7 @@ class X:
 	def print(self):
 		print('.section    __TEXT,__text')
 		print('.globl _main')
-		print('_main:')
-		self.ms["_main"].print()
+		for k, v in self.ms:
+			if k in init_ms: continue
+			print(f'{k}:')
+			self.ms[k].pprint()

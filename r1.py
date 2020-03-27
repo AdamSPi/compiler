@@ -45,7 +45,13 @@ class Expr:
 	def rcoify(self, σ):
 		pass
 
-	def expcon(self):
+	def expcon_e(self):
+		pass
+
+	def expcon_a(self):
+		pass
+
+	def expcon_c(self):
 		pass
 
 	def is_unused(self, var):
@@ -92,11 +98,10 @@ class LET(Expr):
 		nvp = {**nvxe,  **nvbe}
 		return (nvp, epb)
 
-	def expcon(self):
+	def expcon_e(self):
 		return SEQ(
-				STMT(self.var.expcon(), self.xe.expcon()),
-				self.be.expcon() if type(self.be) == LET else \
-				RET(self.be.expcon())
+				STMT(self.var.expcon_a(), self.xe.expcon_c()),
+				self.be.expcon_e()
 			)
 
 	def is_unused(self, var):
@@ -140,8 +145,11 @@ class VAR(Expr):
 	def rcoify(self, σ):
 		return ({}, σ[self.val] if self.val in σ else self)
 
-	def expcon(self):
+	def expcon_a(self):
 		return cVAR(self.val)
+
+	def expcon_e(self):
+		return RET(self.expcon_a())
 
 	def is_unused(self, var):
 		return not self.val == var.val
@@ -167,8 +175,11 @@ class NUM(Expr):
 	def rcoify(self, σ):
 		return ({}, self)
 
-	def expcon(self):
+	def expcon_a(self):
 		return cNUM(self.num)
+
+	def expcon_e(self):
+		return RET(self.expcon_a())
 
 	def is_unused(self, var):
 		return True
@@ -207,7 +218,7 @@ class READ(Expr):
 		nv = {new_var.val: READ()}
 		return (nv, new_var)
 
-	def expcon(self):
+	def expcon_c(self):
 		return cREAD()
 
 	def is_unused(self, var):
@@ -240,8 +251,8 @@ class NEG(Expr):
 		nv = {new_var.val: NEG(ep)}
 		return ({**nvp, **nv}, new_var)
 
-	def expcon(self):
-		return cNEG(self.expr.expcon())
+	def expcon_c(self):
+		return cNEG(self.expr.expcon_a())
 
 	def is_unused(self, var):
 		return self.expr.is_unused(var)
@@ -324,8 +335,8 @@ class ADD(Expr):
 		nv = {new_var.val: ADD(epl, epr)}
 		return ({**nvp, **nv}, new_var)
 
-	def expcon(self):
-		return cADD(self.lhs.expcon(), self.rhs.expcon())
+	def expcon_c(self):
+		return cADD(self.lhs.expcon_a(), self.rhs.expcon_a())
 
 	def is_unused(self, var):
 		return self.lhs.is_unused(var) and self.rhs.is_unused(var)
@@ -370,7 +381,7 @@ class P:
 		return P(LETify(nv))
 
 	def expcon(self):
-		return C({'locals': []}, {'main': self.expr.expcon()})
+		return C({'locals': []}, {'main': self.expr.expcon_e()})
 
 	def to_c(self, opt=0):
 		return self.opt().rcoify().expcon() if opt else \

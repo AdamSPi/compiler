@@ -10,6 +10,8 @@ C0 ::= (program info ((label . tail)+))
 from random import choice
 from rand import RAND
 
+from x0 import *
+
 class cExpr:
 	def __init__(self):
 		pass
@@ -19,6 +21,9 @@ class cExpr:
 
 	def interp(self, env, db, inp):
 		return self
+
+	def select_e(self, dst):
+		pass
 
 
 class cREAD(cExpr):
@@ -40,6 +45,12 @@ class cREAD(cExpr):
 		cREAD._rd_cnt = cREAD._rd_cnt + 1
 		return self.num
 
+	def select_e(self, dst):
+		return [\
+			CALL('_read_int'),
+			MAX(rax, dst)
+		]
+
 class cNEG(cExpr):
 	def __init__(self, e):
 		self.expr = e
@@ -47,6 +58,12 @@ class cNEG(cExpr):
 
 	def interp(self, env, db, inp):
 		return 0 - self.expr.interp(env, db, inp)
+
+	def select_e(self, dst):
+		return [\
+			MOV(self.expr.select_a(), dst),
+			xNEG(dst)
+		]
 
 class cADD(cExpr):
 	def __init__(self, e1, e2):
@@ -56,6 +73,12 @@ class cADD(cExpr):
 	def interp(self, env, db, inp):
 		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
 
+	def select_e(self, dst):
+		return [\
+			MOV(self.rhs.select_a(), dst),
+			xADD(self.lhs.select_a(), dst)
+		]
+
 
 class cARG(cExpr):
 	def __init__(self):
@@ -63,6 +86,14 @@ class cARG(cExpr):
 
 	def interp(self, env, db, inp):
 		pass
+
+	def select_a(self):
+		pass
+
+	def select_e(self, dst):
+		return [\
+			MOV(self.select_a(), dst)
+		]
 
 class cNUM(cARG):
 	def __init__(self, num):
@@ -84,6 +115,9 @@ class cNUM(cARG):
 	def interp(self, env, db, inp):
 		return self.num
 
+	def select_a(self):
+		return xNUM(self.num)
+
 class cVAR(cARG):
 	def __init__(self, n):
 		self.name = n
@@ -95,6 +129,9 @@ class cVAR(cARG):
 		except KeyError:
 			print(f'Undefined var {self.name}')
 			raise SystemExit
+
+	def select_a(self):
+		return xVAR(self.name)
 
 
 class TAIL:
@@ -110,6 +147,9 @@ class TAIL:
 	def uncover_locs(self):
 		pass
 
+	def select_t(self):
+		pass
+
 class RET(TAIL):
 	def __init__(self, arg):
 		self.arg = arg
@@ -120,6 +160,12 @@ class RET(TAIL):
 
 	def uncover_locs(self):
 		return []
+
+	def select_t(self):
+		return [\
+			MOV(self.arg.select_a(), rax),
+			JMP('_end')
+		]
 
 class SEQ(TAIL):
 	def __init__(self, stmt, tail):
@@ -134,6 +180,8 @@ class SEQ(TAIL):
 	def uncover_locs(self):
 		return self.stmt.uncover_locs() + self.tail.uncover_locs()
 
+	def select_t(self):
+		return self.stmt.select_t() + self.tail.select_t()
 
 class STMT(TAIL):
 	def __init__(self, var, expr):
@@ -146,6 +194,10 @@ class STMT(TAIL):
 
 	def uncover_locs(self):
 		return [self.var]
+
+	def select_t(self):
+		return self.expr.select_e(self.var.select_a())
+
 
   
 class C:
@@ -164,11 +216,14 @@ class C:
 	def uncover_locs(self):
 		self.info = {'locals': self.env['main'].uncover_locs()}
 
+	def select(self):
+		main_blck = BLCK({}, self.env['main'].select_t())
+		end_blck = BLCK({},  [xRET()])
+
+		return X({}, {'_main': main_blck, '_end': end_blck})
+
 	def pprint(self):
 		print(f"(program\n(locals . {self.info['locals']})",)
 		for k,v in self.env.items():
 			print(f"{k} .\n{v}")
 		print(')')
-
-def econ(r):
-	pass
