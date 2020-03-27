@@ -4,3 +4,11 @@ def test_expcon():
 	for n in range(12):
 		r_ast = gen(rand_r1, n)
 		assert r_ast.opt().interp(True, True) == r_ast.to_c(opt=1).interp(True, True)
+
+def test_select():
+	for n in range(12):
+		r_ast = gen(rand_r1, n)
+		x_prog = r_ast.to_c(opt=1).select()
+		# import pdb; pdb.set_trace()
+		# m = x_prog.interp(True, True)[rax]
+		assert r_ast.opt().interp(True, True) == x_prog.interp(True, True)[rax]

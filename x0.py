@@ -7,7 +7,10 @@ class xARG:
 	def __repr__(self):
 		return self.str
 
-	def interp(self, ms, db, inp):
+	def interp_a(self, ms, db, inp):
+		return self
+
+	def interp_d(self, ms, db, inp):
 		return self
 
 class xNUM(xARG):
@@ -22,7 +25,9 @@ class xNUM(xARG):
 		return xNUM(self.num - op.num)
 
 	def __eq__(self, op):
-		return self.num == op.num
+		if type(op) == int:
+			return self.num == op
+		return self.num == op.num 
 
 	def __neg__(self):
 		return xNUM(-self.num)
@@ -32,20 +37,33 @@ class register(xARG):
 		self.name = name
 		self.str = f"%{self.name}"
 
+	def interp_a(self, ms, db, inp):
+		return ms[self]
+
 class DREF(xARG):
 	def __init__(self, reg, offset=0):
 		self.reg = reg
 		self.offset = offset
 		self.str = f"{self.reg}({self.offset})" if offset > 0 else f"({self.reg})"
 
-	def interp(self, ms, db, inp):
-		val = ms[self.reg] + xNUM(self.offset)
-		return ms.getdefault(val, xNUM(0))
+	def interp_a(self, ms, db, inp):
+		val = ms[self.reg] + self.offset
+		return ms[val]
+
+	def interp_d(self, ms, db, inp):
+		val = ms[self.reg] + self.offset
+		return ms[val]
 
 class xVAR(xARG):
 	def __init__(self, n):
 		self.name = n
 		self.str = f"{self.name}"
+
+	def interp_a(self, ms, db, inp):
+		return ms[self.name]
+
+	def interp_d(self, ms, db, inp):
+		return self.name
 
 
 # x86_64 register set
@@ -57,8 +75,8 @@ rcx = register("rcx")
 rdx = register("rdx")
 rsi = register("rsi")
 rdi = register("rdi")
-r8 = register("r8")
-r9 = register("r9")
+r8  = register("r8")
+r9  = register("r9")
 r10 = register("r10")
 r11 = register("r11")
 r12 = register("r12")
@@ -74,7 +92,7 @@ class INSTR:
 	def __repr__(self):
 		return self.str
 
-	def interp(self, ms, db, inp):
+	def interp_e(self, ms, db, inp):
 		pass
 
 class xADD(INSTR):
@@ -83,12 +101,9 @@ class xADD(INSTR):
 		self.dest = dest
 		self.str = f"addq {self.src} {self.dest}"
 
-	def interp(self, ms, db, inp):
-		val =  self.dest.interp(ms, db, inp)
-		if type(self.src) == xNUM and type(self.dest) != xNUM:
-			 ms[val] = self.src + ms[val]
-		else:
-			ms[val] = ms[self.src] + ms[val]
+	def interp_e(self, ms, db, inp):
+		val =  self.dest.interp_d(ms, db, inp)
+		ms[val] = self.src.interp_a(ms, db, inp) + ms[val]
 		return ms
 
 class xSUB(INSTR):
@@ -97,12 +112,9 @@ class xSUB(INSTR):
 		self.dest = dest
 		self.str = f"subq {self.src} {self.dest}"
 
-	def interp(self, ms, db, inp):
-		val =  self.dest.interp(ms, db, inp)
-		if type(self.src) == xNUM and type(self.dest) != xNUM:
-			 ms[val] = ms[val] - self.src
-		else:
-			ms[val] = ms[val] - ms[self.src]
+	def interp_e(self, ms, db, inp):
+		val =  self.dest.interp_d(ms, db, inp)
+		ms[val] = ms[val] - self.src.interp_a(ms, db, inp)
 		return ms
 
 class MOV(INSTR):
@@ -111,15 +123,16 @@ class MOV(INSTR):
 		self.dest = dest
 		self.str = f"movq {self.src} {self.dest}"
 
-	def interp(self, ms, db, inp):
-		ms[self.dest.interp(ms, db, inp)] = self.src.interp(ms, db, inp)
+	def interp_e(self, ms, db, inp):
+		val = self.dest.interp_d(ms, db, inp)
+		ms[val] = self.src.interp_a(ms, db, inp)
 		return ms
 
 class xRET(INSTR):
 	def __init__(self):
 		self.str = "retq"
 
-	def interp(self, ms, db, inp):
+	def interp_e(self, ms, db, inp):
 		print(ms[rax])
 		return ms
 
@@ -128,8 +141,9 @@ class xNEG(INSTR):
 		self.src = src
 		self.str = f"negq {self.src}"
 
-	def interp(self, ms, db, inp):
-		ms[self.src] = -ms[self.src]
+	def interp_e(self, ms, db, inp):
+		val = self.src.interp_d(ms, db, inp)
+		ms[val] = - self.src.interp_a(ms, db, inp)
 		return ms
 
 class CALL(INSTR):
@@ -140,8 +154,8 @@ class CALL(INSTR):
 		self.label = label
 		self.str = f"callq {self.label}"
 
-	def interp(self, ms, db, inp):
-		if self.label == "read_int":
+	def interp_e(self, ms, db, inp):
+		if self.label == "_read_int":
 			if db:
 				if inp:
 					ms[rax] = xNUM(inp)
@@ -158,7 +172,7 @@ class JMP(INSTR):
 		self.label = label
 		self.str = f"jmp {self.label}"
 
-	def interp(self, ms, db, inp):
+	def interp_e(self, ms, db, inp):
 		return ms[self.label].interp(ms, db, inp)
 
 class PUSH(INSTR):
@@ -166,9 +180,10 @@ class PUSH(INSTR):
 		self.src = src
 		self.str = f"pushq {self.src}"
 
-	def interp(self, ms, db, inp):
+	def interp_e(self, ms, db, inp):
 		ms[rsp] = ms[rsp] - 8
-		ms[DREF(rsp).interp(ms, db, inp)]  = ms[self.src]
+		val = DREF(rsp).interp_d(ms, db, inp)
+		ms[val]  = self.src.interp_a(ms, db, inp)
 		return ms
 
 class POP(INSTR):
@@ -176,8 +191,9 @@ class POP(INSTR):
 		self.dest = dest 
 		self.str = f"popq {self.dest}"
 
-	def interp(self, ms, db, inp):
-		ms[self.dest]  = ms[DREF(rsp).interp(ms, db, inp)]
+	def interp_e(self, ms, db, inp):
+		val = self.dest.interp_d(ms, db, inp)
+		ms[val] = DREF(rsp).interp_d(ms, db, inp)
 		ms[rsp] = ms[rsp] + 8
 		return ms
 
@@ -190,10 +206,8 @@ class BLCK:
 		self.instr = instr
 
 	def interp(self, ms, db, inp):
-		if not self.instr:
-			pass
 		for ins in self.instr:
-			ms = ins.interp(ms, db, inp)
+			ms = ins.interp_e(ms, db, inp)
 		return ms
 
 	def pprint(self):
@@ -236,7 +250,6 @@ class X:
 	def print(self):
 		print('.section    __TEXT,__text')
 		print('.globl _main')
-		for k, v in self.ms:
-			if k in init_ms: continue
+		for k in (self.ms.keys() - init_ms.keys()):
 			print(f'{k}:')
 			self.ms[k].pprint()

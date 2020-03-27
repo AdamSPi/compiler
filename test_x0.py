@@ -16,7 +16,7 @@ def test_x0_double():
 	assert x0_test.interp()[rax] == xNUM(10)
 
 read_dubl_main_blck = BLCK({}, [
-		CALL('read_int'),
+		CALL('_read_int'),
 		xADD(rax, rax),
 		xRET()
 	]

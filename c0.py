@@ -48,7 +48,7 @@ class cREAD(cExpr):
 	def select_e(self, dst):
 		return [\
 			CALL('_read_int'),
-			MAX(rax, dst)
+			MOV(rax, dst)
 		]
 
 class cNEG(cExpr):
@@ -220,7 +220,7 @@ class C:
 		main_blck = BLCK({}, self.env['main'].select_t())
 		end_blck = BLCK({},  [xRET()])
 
-		return X({}, {'_main': main_blck, '_end': end_blck})
+		return X(self.info, {'_main': main_blck, '_end': end_blck})
 
 	def pprint(self):
 		print(f"(program\n(locals . {self.info['locals']})",)
