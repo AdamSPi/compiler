@@ -246,8 +246,8 @@ class NEG(Expr):
 		return NEG(self.expr.uniqueify(env))
 
 	def rcoify(self, σ):
-		new_var = VAR(get_unq_var())
 		nvp, ep = self.expr.rcoify(σ)
+		new_var = VAR(get_unq_var())
 		nv = {new_var.val: NEG(ep)}
 		return ({**nvp, **nv}, new_var)
 
@@ -328,9 +328,9 @@ class ADD(Expr):
 		return ADD(self.lhs.uniqueify(env), self.rhs.uniqueify(env))
 
 	def rcoify(self, σ):
-		new_var = VAR(get_unq_var())
 		nvl, epl = self.lhs.rcoify(σ)
 		nvr, epr = self.rhs.rcoify(σ)
+		new_var = VAR(get_unq_var())
 		nvp  = {**nvl,  **nvr}
 		nv = {new_var.val: ADD(epl, epr)}
 		return ({**nvp, **nv}, new_var)
@@ -386,6 +386,10 @@ class P:
 	def to_c(self, opt=0):
 		return self.opt().rcoify().expcon() if opt else \
 			   self.uniqueify().rcoify().expcon()
+
+	def to_x(self, opt=0):
+		return self.to_c(1).select() if opt else \
+			   self.to_c().select()
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()

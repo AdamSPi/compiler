@@ -193,7 +193,7 @@ class STMT(TAIL):
 		env[self.var.name] = self.expr.interp(env, db, inp)
 
 	def uncover_locs(self):
-		return [self.var]
+		return [self.var.name]
 
 	def select_t(self):
 		return self.expr.select_e(self.var.select_a())
@@ -214,9 +214,10 @@ class C:
 		return ans
 
 	def uncover_locs(self):
-		self.info = {'locals': self.env['main'].uncover_locs()}
+		return {'locals': self.env['main'].uncover_locs()}
 
 	def select(self):
+		self.info = self.uncover_locs()
 		main_blck = BLCK({}, self.env['main'].select_t())
 		end_blck = BLCK({},  [xRET()])
 

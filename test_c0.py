@@ -8,7 +8,11 @@ def test_expcon():
 def test_select():
 	for n in range(12):
 		r_ast = gen(rand_r1, n)
-		x_prog = r_ast.to_c(opt=1).select()
-		# import pdb; pdb.set_trace()
-		# m = x_prog.interp(True, True)[rax]
+		x_prog = r_ast.to_x(1)
 		assert r_ast.opt().interp(True, True) == x_prog.interp(True, True)[rax]
+
+def test_assign_homes():
+	for n in range(12):
+		r_ast = gen(rand_r1, n)
+		x_prog = r_ast.to_x(1)
+		assert r_ast.opt().interp(True, True) == x_prog.assign_homes().interp(True, True)[rax]

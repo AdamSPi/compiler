@@ -7,11 +7,9 @@ class xARG:
 	def __repr__(self):
 		return self.str
 
-	def interp_a(self, ms, db, inp):
+	def assign(self, σ):
 		return self
 
-	def interp_d(self, ms, db, inp):
-		return self
 
 class xNUM(xARG):
 	def __init__(self, num):
@@ -32,6 +30,12 @@ class xNUM(xARG):
 	def __neg__(self):
 		return xNUM(-self.num)
 
+	def interp_a(self, ms, db, inp):
+		return self
+
+	def interp_d(self, ms, db, inp):
+		return self.num
+
 class register(xARG):
 	def __init__(self, name):
 		self.name = name
@@ -40,19 +44,22 @@ class register(xARG):
 	def interp_a(self, ms, db, inp):
 		return ms[self]
 
+	def interp_d(self, ms, db, inp):
+		return self
+
 class DREF(xARG):
-	def __init__(self, reg, offset=0):
+	def __init__(self, reg, offset=xNUM(0)):
 		self.reg = reg
 		self.offset = offset
-		self.str = f"{self.reg}({self.offset})" if offset > 0 else f"({self.reg})"
+		self.str = f"{self.reg}({self.offset})" if offset.num > 0 else f"({self.reg})"
 
 	def interp_a(self, ms, db, inp):
 		val = ms[self.reg] + self.offset
-		return ms[val]
+		return ms[val.num]
 
 	def interp_d(self, ms, db, inp):
 		val = ms[self.reg] + self.offset
-		return ms[val]
+		return val.num
 
 class xVAR(xARG):
 	def __init__(self, n):
@@ -64,6 +71,10 @@ class xVAR(xARG):
 
 	def interp_d(self, ms, db, inp):
 		return self.name
+
+	def assign(self, σ):
+		return σ[self.name]
+
 
 
 # x86_64 register set
@@ -95,6 +106,9 @@ class INSTR:
 	def interp_e(self, ms, db, inp):
 		pass
 
+	def assign(self, σ):
+		return [self]
+
 class xADD(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
@@ -105,6 +119,10 @@ class xADD(INSTR):
 		val =  self.dest.interp_d(ms, db, inp)
 		ms[val] = self.src.interp_a(ms, db, inp) + ms[val]
 		return ms
+
+	def assign(self, σ):
+		return [xADD(self.src.assign(σ), self.dest.assign(σ))]
+
 
 class xSUB(INSTR):
 	def __init__(self, src, dest):
@@ -117,6 +135,10 @@ class xSUB(INSTR):
 		ms[val] = ms[val] - self.src.interp_a(ms, db, inp)
 		return ms
 
+	def assign(self, σ):
+		return [xSUB(self.src.assign(σ), self.dest.assign(σ))]
+
+
 class MOV(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
@@ -127,6 +149,9 @@ class MOV(INSTR):
 		val = self.dest.interp_d(ms, db, inp)
 		ms[val] = self.src.interp_a(ms, db, inp)
 		return ms
+
+	def assign(self, σ):
+		return [MOV(self.src.assign(σ), self.dest.assign(σ))]
 
 class xRET(INSTR):
 	def __init__(self):
@@ -145,6 +170,9 @@ class xNEG(INSTR):
 		val = self.src.interp_d(ms, db, inp)
 		ms[val] = - self.src.interp_a(ms, db, inp)
 		return ms
+
+	def assign(self, σ):
+		return [xNEG(self.src.assign(σ))]
 
 class CALL(INSTR):
 	_db_cnt = RAND
@@ -181,21 +209,27 @@ class PUSH(INSTR):
 		self.str = f"pushq {self.src}"
 
 	def interp_e(self, ms, db, inp):
-		ms[rsp] = ms[rsp] - 8
+		ms[rsp] = ms[rsp] - xNUM(8)
 		val = DREF(rsp).interp_d(ms, db, inp)
 		ms[val]  = self.src.interp_a(ms, db, inp)
 		return ms
 
+	def assign(self, σ):
+		return [PUSH(self.src.assign(σ))]
+
 class POP(INSTR):
 	def __init__(self, src):
-		self.dest = dest 
-		self.str = f"popq {self.dest}"
+		self.src = src 
+		self.str = f"popq {self.src}"
 
 	def interp_e(self, ms, db, inp):
-		val = self.dest.interp_d(ms, db, inp)
+		val = self.src.interp_d(ms, db, inp)
 		ms[val] = DREF(rsp).interp_d(ms, db, inp)
-		ms[rsp] = ms[rsp] + 8
+		ms[rsp] = ms[rsp] + xNUM(8)
 		return ms
+
+	def assign(self, σ):
+		return [POP(self.src.assign(σ))]
 
 
 
@@ -209,6 +243,12 @@ class BLCK:
 		for ins in self.instr:
 			ms = ins.interp_e(ms, db, inp)
 		return ms
+
+	def assign(self, info, σ):
+		ni = []
+		for ins in self.instr:
+			ni += ins.assign(σ)
+		return BLCK(info, ni)
 
 	def pprint(self):
 		for ins in self.instr:
@@ -240,14 +280,48 @@ class X:
 		self.ms = {**init_ms, **ms}
 
 	def interp(self, db=False, reset=False, inp=0):
-		# ms := (reg -> num) x (num(addr) -> num) x
-		#       (var -> num) x (label -> block)
+		# ms := (reg -> num) x (addr(num) -> num) x
+		#       (var -> num) x (label(str) -> block)
 		global RAND
 		if reset:
 			CALL._db_cnt = RAND
 		return  self.ms["_main"].interp(self.ms, db, inp)
 
-	def print(self):
+	def assign_homes(self):
+		n = len(self.info['locals'])
+		vc = (n if n%2==0 else n+1) * 8
+
+		σ = {}
+		for i in range(1,n+1):
+			σ[self.info['locals'][i-1]] = DREF(rsp, xNUM(8*i))
+		new_main = self.ms['_main'].assign({}, σ)
+
+		begin_blck = BLCK(
+			{},
+			[
+				PUSH(rbp),
+				MOV(rsp, rbp),
+				xSUB(xNUM(vc), rsp),
+				JMP('_begin')
+			]
+		)
+		end_blck = BLCK(
+			{},
+			[
+				xADD(xNUM(vc), rsp),
+				POP(rbp),
+				xRET()
+			]
+		)
+		new_ms = {
+			'_main': begin_blck,
+			'_end': end_blck,
+			'_begin': new_main
+		}
+		return X(self.info, new_ms)
+
+
+	def pprint(self):
 		print('.section    __TEXT,__text')
 		print('.globl _main')
 		for k in (self.ms.keys() - init_ms.keys()):
