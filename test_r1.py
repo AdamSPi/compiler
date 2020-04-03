@@ -292,23 +292,6 @@ def test_rcoify():
 	assert rand_ast3.opt().interp(True, inp=1) == rand_ast3.opt().rcoify().interp(True, inp=1)
 	assert rand_ast4.opt().interp(True, inp=1) == rand_ast4.opt().rcoify().interp(True, inp=1)
 	assert rand_ast5.opt().interp(True, True) == rand_ast5.opt().rcoify().interp(True, True)
-
-def is_rco_form(e):
-	if type(e) in (VAR, NUM):
-		return True
-	elif type(e) in (READ, NEG, ADD):
-		if type(e) == NEG:
-			if type(e.expr) in (VAR, NUM):
-				return True
-			return False
-		elif type(e) == ADD:
-			if  type(e.rhs) in (VAR, NUM) and \
-				type(e.lhs) in (VAR, NUM):
-			   return True
-			return False
-		return True if type(e) == READ else False
-	elif type(e) == LET:
-		return is_rco_form(e.be) and is_rco_form(e.xe)
 		
 
 

@@ -30,8 +30,25 @@ from r1 import *
 # print(c1.info['locals'])
 # c1.pprint()
 
-p1 = P(ADD(NUM(52), NEG(NUM(10))))
-p1.to_c().select().pprint()
-print()
-p1.to_x().assign_homes().pprint()
-p1.to_x().assign_homes().interp(True, True)
+# p1 = P(ADD(NUM(52), NEG(NUM(10))))
+# p1.to_c().select().pprint()
+# print()
+# p1.to_x().assign_homes().pprint()
+# print(p1.to_x().assign_homes().interp(True, True))
+
+# p2 = P(
+# 		LET(
+# 			VAR('A'), NUM(42),
+# 			LET(
+# 				VAR('B'), READ(),
+# 				VAR('B')
+# 			)
+# 		)
+# 	)
+
+# x = p2.uniqueify().rcoify()
+# x.pprint()
+# xx = x.expcon()
+# xx.pprint()
+# print()
+# print(p2.to_x().assign_homes().patch_instr().interp(True, True))

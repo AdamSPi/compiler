@@ -366,6 +366,8 @@ class P:
 		return P(self.expr.uniqueify({}))
 
 	def rcoify(self):
+		if is_rco_form(self.expr):
+			return P(self.expr)
 		global rco_cnt
 		rco_cnt = -1
 		def LETify(env):
@@ -432,3 +434,25 @@ def rand_r1_no_read(n, vs=[]):
 		vs_prime = vs + [x_prime]
 		return \
 			LET(x_prime, rand_r1_no_read(n-1, vs), rand_r1_no_read(n-1, vs_prime))
+
+
+def is_rco_form(e):
+	if type(e) in (VAR, NUM):
+		return True
+	elif type(e) == LET:
+		return is_rco_form(e.be) and is_rco_form_c(e.xe)
+	return False
+
+def is_rco_form_c(c):
+	if  type(c) in (READ, NEG, ADD):
+		if type(c) == NEG:
+			return is_rco_form_a(c.expr)
+		elif type(c) == ADD:
+			return is_rco_form_a(c.lhs) and is_rco_form_a(c.rhs)
+		return True
+	return False
+
+def is_rco_form_a(a):
+	if type(a) in (NUM, VAR):
+		return True
+	return False

@@ -17,9 +17,13 @@ class xNUM(xARG):
 		self.str = f"${self.num}"
 
 	def __add__(self, op):
+		if type(op) == int:
+			return xNUM(self.num + op)
 		return xNUM(self.num + op.num)
 
 	def __sub__(self, op):
+		if type(op) == int:
+			return xNUM(self.num - op)
 		return xNUM(self.num - op.num)
 
 	def __eq__(self, op):
@@ -48,10 +52,10 @@ class register(xARG):
 		return self
 
 class DREF(xARG):
-	def __init__(self, reg, offset=xNUM(0)):
+	def __init__(self, reg, offset=0):
 		self.reg = reg
 		self.offset = offset
-		self.str = f"{self.reg}({self.offset})" if offset.num > 0 else f"({self.reg})"
+		self.str = f"{self.reg}({self.offset})" if offset > 0 else f"({self.reg})"
 
 	def interp_a(self, ms, db, inp):
 		val = ms[self.reg] + self.offset
@@ -109,6 +113,9 @@ class INSTR:
 	def assign(self, σ):
 		return [self]
 
+	def patch(self):
+		return [self]
+
 class xADD(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
@@ -122,6 +129,15 @@ class xADD(INSTR):
 
 	def assign(self, σ):
 		return [xADD(self.src.assign(σ), self.dest.assign(σ))]
+
+	def patch(self):
+		tmp_reg = rax
+		if type(self.src) == DREF and type(self.dest) == DREF:
+			return [\
+				MOV(self.src, tmp_reg),
+				xADD(tmp_reg, self.dest)
+			]
+		return [self]
 
 
 class xSUB(INSTR):
@@ -138,6 +154,15 @@ class xSUB(INSTR):
 	def assign(self, σ):
 		return [xSUB(self.src.assign(σ), self.dest.assign(σ))]
 
+	def patch(self):
+		tmp_reg = rax
+		if type(self.src) == DREF and type(self.dest) == DREF:
+			return [\
+				MOV(self.src, tmp_reg),
+				xSUB(tmp_reg, self.dest)
+			]
+		return [self]
+
 
 class MOV(INSTR):
 	def __init__(self, src, dest):
@@ -152,6 +177,15 @@ class MOV(INSTR):
 
 	def assign(self, σ):
 		return [MOV(self.src.assign(σ), self.dest.assign(σ))]
+
+	def patch(self):
+		tmp_reg = rax
+		if type(self.src) == DREF and type(self.dest) == DREF:
+			return [\
+				MOV(self.src, tmp_reg),
+				MOV(tmp_reg, self.dest)
+			]
+		return [self]
 
 class xRET(INSTR):
 	def __init__(self):
@@ -224,7 +258,7 @@ class POP(INSTR):
 
 	def interp_e(self, ms, db, inp):
 		val = self.src.interp_d(ms, db, inp)
-		ms[val] = DREF(rsp).interp_d(ms, db, inp)
+		ms[val] = DREF(rsp).interp_a(ms, db, inp)
 		ms[rsp] = ms[rsp] + xNUM(8)
 		return ms
 
@@ -248,6 +282,12 @@ class BLCK:
 		ni = []
 		for ins in self.instr:
 			ni += ins.assign(σ)
+		return BLCK(info, ni)
+
+	def patch(self, info):
+		ni = []
+		for ins in self.instr:
+			ni += ins.patch()
 		return BLCK(info, ni)
 
 	def pprint(self):
@@ -293,7 +333,7 @@ class X:
 
 		σ = {}
 		for i in range(1,n+1):
-			σ[self.info['locals'][i-1]] = DREF(rsp, xNUM(8*i))
+			σ[self.info['locals'][i-1]] = DREF(rsp, 8*i)
 		new_main = self.ms['_main'].assign({}, σ)
 
 		begin_blck = BLCK(
@@ -320,6 +360,11 @@ class X:
 		}
 		return X(self.info, new_ms)
 
+	def patch_instr(self):
+		new_ms = self.ms.copy()
+		new_main = new_ms['_begin'].patch({})
+		new_ms['_begin'] = new_main
+		return X(self.info, new_ms)
 
 	def pprint(self):
 		print('.section    __TEXT,__text')
