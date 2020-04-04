@@ -383,15 +383,17 @@ class P:
 		return P(LETify(nv))
 
 	def expcon(self):
-		return C({'locals': []}, {'main': self.expr.expcon_e()})
+		return C({'locals': []}, {'body': self.expr.expcon_e()})
 
 	def to_c(self, opt=0):
 		return self.opt().rcoify().expcon() if opt else \
 			   self.uniqueify().rcoify().expcon()
 
 	def to_x(self, opt=0):
-		return self.to_c(1).select() if opt else \
-			   self.to_c().select()
+		return self.to_c(opt).select()
+
+	def to_asm(self, opt=0):
+		return self.to_x(opt).assign_homes().patch_instr().main_gen()
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()

@@ -305,4 +305,7 @@ def test_rand_rcoify():
 		assert ast_opt.interp(True, True) == ast_rco.interp(True, True)
 		assert is_rco_form(ast_rco.expr)
 
-
+def test_expcon():
+	for n in range(12):
+		r_ast = gen(rand_r1, n)
+		assert r_ast.opt().interp(True, True) == r_ast.to_c(opt=1).interp(True, True)

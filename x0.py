@@ -55,7 +55,7 @@ class DREF(xARG):
 	def __init__(self, reg, offset=0):
 		self.reg = reg
 		self.offset = offset
-		self.str = f"{self.reg}({self.offset})" if offset > 0 else f"({self.reg})"
+		self.str = f"{self.offset}({self.reg})" if offset != 0 else f"({self.reg})"
 
 	def interp_a(self, ms, db, inp):
 		val = ms[self.reg] + self.offset
@@ -82,8 +82,8 @@ class xVAR(xARG):
 
 
 # x86_64 register set
-rsp = register("rsi")
-rbp = register("rbi")
+rsp = register("rsp")
+rbp = register("rbp")
 rax = register("rax")
 rbx = register("rbx")
 rcx = register("rcx")
@@ -120,7 +120,7 @@ class xADD(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
 		self.dest = dest
-		self.str = f"addq {self.src} {self.dest}"
+		self.str = f"addq {self.src}, {self.dest}"
 
 	def interp_e(self, ms, db, inp):
 		val =  self.dest.interp_d(ms, db, inp)
@@ -144,7 +144,7 @@ class xSUB(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
 		self.dest = dest
-		self.str = f"subq {self.src} {self.dest}"
+		self.str = f"subq {self.src}, {self.dest}"
 
 	def interp_e(self, ms, db, inp):
 		val =  self.dest.interp_d(ms, db, inp)
@@ -168,7 +168,7 @@ class MOV(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
 		self.dest = dest
-		self.str = f"movq {self.src} {self.dest}"
+		self.str = f"movq {self.src}, {self.dest}"
 
 	def interp_e(self, ms, db, inp):
 		val = self.dest.interp_d(ms, db, inp)
@@ -325,50 +325,68 @@ class X:
 		global RAND
 		if reset:
 			CALL._db_cnt = RAND
-		return  self.ms["_main"].interp(self.ms, db, inp)
+		return  self.ms["_start"].interp(self.ms, db, inp)
 
 	def assign_homes(self):
 		n = len(self.info['locals'])
-		vc = (n if n%2==0 else n+1) * 8
+		vc = (n if n%2==0 else n+1)
 
 		σ = {}
-		for i in range(1,n+1):
-			σ[self.info['locals'][i-1]] = DREF(rsp, 8*i)
-		new_main = self.ms['_main'].assign({}, σ)
+		for i in range(n):
+			σ[self.info['locals'][i]] = DREF(rbp, -8*(i+1))
+		body_blck = self.ms['_start'].assign({}, σ)
 
-		begin_blck = BLCK(
+		start_blck = BLCK(
 			{},
 			[
 				PUSH(rbp),
 				MOV(rsp, rbp),
-				xSUB(xNUM(vc), rsp),
-				JMP('_begin')
+				xSUB(xNUM(vc*8), rsp),
+				JMP('_body')
 			]
 		)
 		end_blck = BLCK(
 			{},
 			[
-				xADD(xNUM(vc), rsp),
+				xADD(xNUM(vc*8), rsp),
 				POP(rbp),
 				xRET()
 			]
 		)
 		new_ms = {
-			'_main': begin_blck,
+			'_start': start_blck,
 			'_end': end_blck,
-			'_begin': new_main
+			'_body': body_blck
 		}
 		return X(self.info, new_ms)
 
 	def patch_instr(self):
 		new_ms = self.ms.copy()
-		new_main = new_ms['_begin'].patch({})
-		new_ms['_begin'] = new_main
+		body_blck = new_ms['_body'].patch({})
+		new_ms['_body'] = body_blck
+		return X(self.info, new_ms)
+
+	def main_gen(self):
+		main_blck = BLCK(
+			{},
+			[
+				PUSH(rbp),
+				MOV(rsp, rbp),
+				CALL('_start'),
+				MOV(rax, rdi),
+				CALL('_print_int'),
+				POP(rbp),
+				xRET()
+			]
+		)
+		new_ms = self.ms.copy()
+		new_ms['_main'] = main_blck
 		return X(self.info, new_ms)
 
 	def pprint(self):
 		print('.section    __TEXT,__text')
 		print('.globl _main')
-		for k in (self.ms.keys() - init_ms.keys()):
-			print(f'{k}:')
-			self.ms[k].pprint()
+		for k in ['_start', '_body', '_end', '_main']:
+			if k in self.ms:
+				print(f'\n{k}:')
+				self.ms[k].pprint()

@@ -210,21 +210,21 @@ class C:
 		global RAND
 		if reset:
 			cREAD._db_cnt = RAND
-		ans = self.env['main'].interp({}, db, inp)
+		ans = self.env['body'].interp({}, db, inp)
 		return ans
 
 	def uncover_locs(self):
-		return {'locals': self.env['main'].uncover_locs()}
+		return {'locals': self.env['body'].uncover_locs()}
 
 	def select(self):
 		self.info = self.uncover_locs()
-		main_blck = BLCK({}, self.env['main'].select_t())
+		body_blck = BLCK({}, self.env['body'].select_t())
 		end_blck = BLCK({},  [xRET()])
 
-		return X(self.info, {'_main': main_blck, '_end': end_blck})
+		return X(self.info, {'_start': body_blck, '_end': end_blck})
 
 	def pprint(self):
-		print(f"(program\n(locals . {self.info['locals']})",)
+		print(f"(program\n(locals . {self.uncover_locs()})",)
 		for k,v in self.env.items():
 			print(f"{k} .\n{v}")
 		print(')')

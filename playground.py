@@ -1,11 +1,11 @@
 from r1 import *
-# rco_ast = P(\
-# 	ADD(
-# 		ADD(NUM(2), NUM(3)),
-# 		LET(VAR('X'), READ(), ADD(VAR('X'), VAR('X'))
-# 		)
-# 	)
-# )
+rco_ast = P(\
+	ADD(
+		ADD(NUM(2), NUM(3)),
+		LET(VAR('X'), READ(), ADD(VAR('X'), VAR('X'))
+		)
+	)
+)
 # # import pdb; pdb.set_trace()
 # # rco_ast.rcoify().show()
 
@@ -52,3 +52,24 @@ from r1 import *
 # xx.pprint()
 # print()
 # print(p2.to_x().assign_homes().patch_instr().interp(True, True))
+
+# x1 = X({},\
+# 	{'_begin': BLCK({}, [\
+# 		MOV(xNUM(42),DREF(rsi, 8)),
+# 		MOV(DREF(rsi, 8), DREF(rsi, 16)),
+# 		MOV(DREF(rsi, 16), rax),
+# 		xRET()
+# 	]),
+# 	'_main': BLCK({}, [\
+# 		JMP('_begin')
+# 	])
+# 	}
+# )
+
+# x1.patch_instr().pprint()
+
+x = rco_ast.to_asm()
+x.pprint()
+
+
+

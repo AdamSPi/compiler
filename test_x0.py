@@ -8,7 +8,7 @@ dbl_main_blck = BLCK({}, [
 	]
 )
 
-dbl_ms = {'_main': dbl_main_blck}
+dbl_ms = {'_start': dbl_main_blck}
 
 x0_test = X({}, dbl_ms)
 
@@ -22,7 +22,7 @@ read_dubl_main_blck = BLCK({}, [
 	]
 )
 
-read_ms =  {'_main': read_dubl_main_blck}
+read_ms =  {'_start': read_dubl_main_blck}
 
 x0_test2 = X({}, read_ms)
 
