@@ -1,4 +1,14 @@
 from r1 import *
+import os
+import sys
+
+import pexpect
+
+import re
+
+from rand import RAND
+
+
 rco_ast = P(\
 	ADD(
 		ADD(NUM(2), NUM(3)),
@@ -68,8 +78,28 @@ rco_ast = P(\
 
 # x1.patch_instr().pprint()
 
+print('Expected: ' + str(rco_ast.interp(True, True)))
+print()
 x = rco_ast.to_asm()
+sys.stdout = open("x.s", "w")
 x.pprint()
+sys.stdout.close()
+sys.stdout = sys.__stdout__
+# link it w/ runtime
+os.system('make build')
 
+i = 0
 
+child = pexpect.spawn('./x.bin')
 
+while child.isalive():
+	try:
+		child.expect('read_int')
+		print('read')
+		print(f'sending {RAND-i}')
+		child.sendline(f'{RAND-i}')
+		i += 1
+	except:
+		break
+nums = re.findall(r'\d+', str(child.before)) 
+print(list(map(int, nums))[-1])
