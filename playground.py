@@ -77,29 +77,72 @@ rco_ast = P(\
 # )
 
 # x1.patch_instr().pprint()
+# rco_ast.pprint()
+# print()
+# x = rco_ast.to_asm()
+# x.pprint()
+# print()
+# print('Expected: ' + str(rco_ast.interp(True, True)))
+# print()
+# sys.stdout = open("x.s", "w")
+# x.pprint()
+# sys.stdout.close()
+# sys.stdout = sys.__stdout__
+# # link it w/ runtime
+# os.system('make build')
 
-print('Expected: ' + str(rco_ast.interp(True, True)))
-print()
-x = rco_ast.to_asm()
-sys.stdout = open("x.s", "w")
-x.pprint()
-sys.stdout.close()
-sys.stdout = sys.__stdout__
-# link it w/ runtime
-os.system('make build')
+# i = 0
 
-i = 0
+# child = pexpect.spawn('./x.bin')
 
-child = pexpect.spawn('./x.bin')
+# while child.isalive():
+# 	try:
+# 		child.expect('read_int')
+# 		child.sendline(f'{RAND-i}')
+# 		i += 1
+# 	except:
+# 		break
+# nums = re.findall(r'\d+', str(child.before)) 
+# ans = list(map(int, nums))[-1]
+# print(ans)
+# print(ans == rco_ast.interp(True, True))
+# import pdb; pdb.set_trace()
 
-while child.isalive():
-	try:
-		child.expect('read_int')
-		print('read')
-		print(f'sending {RAND-i}')
-		child.sendline(f'{RAND-i}')
-		i += 1
-	except:
-		break
-nums = re.findall(r'\d+', str(child.before)) 
-print(list(map(int, nums))[-1])
+
+test_blck = BLCK(
+	{}, 
+	[
+	MOV(xNUM(1), xVAR('v')),
+	MOV(xNUM(46), xVAR('w')),
+	MOV(xVAR('v'), xVAR('x')),
+	xADD(xNUM(7), xVAR('x')),
+	MOV(xVAR('x'), xVAR('y')),
+	xADD(xNUM(4), xVAR('y')),
+	MOV(xVAR('x'), xVAR('z')),
+	xADD(xVAR('w'), xVAR('z')),
+	MOV(xVAR('y'), xVAR('t.1')),
+	xNEG(xVAR('t.1')),
+	MOV(xVAR('z'), rax),
+	xADD(xVAR('t.1'), rax),
+	JMP('conclusion')
+	]
+)
+
+x = X({}, {'start': test_blck})
+print(x.uncover_live().info)
+
+# {
+# 2: {'v'},
+# 3: {'w', 'v'},
+# 4: {'w', 'x'},
+# 5: {'w', 'x'},
+# 6: {'y', 'w', 'x'},
+# 7: {'y', 'w', 'x'},
+# 8: {'z', 'y', 'w'},
+# 9: {'z', 'y'},
+# 10: {'z', 't.1'},
+# 11: {'t.1', 'z'},
+# 12: {'t.1'},
+# 13: set(),
+# 14: set()}
+# }

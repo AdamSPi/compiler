@@ -47,7 +47,7 @@ class cREAD(cExpr):
 
 	def select_e(self, dst):
 		return [\
-			CALL('_read_int'),
+			CALL('read_int'),
 			MOV(rax, dst)
 		]
 
@@ -164,7 +164,7 @@ class RET(TAIL):
 	def select_t(self):
 		return [\
 			MOV(self.arg.select_a(), rax),
-			JMP('_end')
+			JMP('end')
 		]
 
 class SEQ(TAIL):
@@ -214,14 +214,13 @@ class C:
 		return ans
 
 	def uncover_locs(self):
-		return {'locals': self.env['body'].uncover_locs()}
+		return C({'locals': self.env['body'].uncover_locs()}, self.env)
 
 	def select(self):
-		self.info = self.uncover_locs()
 		body_blck = BLCK({}, self.env['body'].select_t())
 		end_blck = BLCK({},  [xRET()])
 
-		return X(self.info, {'_start': body_blck, '_end': end_blck})
+		return X(self.info, {'start': body_blck, 'end': end_blck})
 
 	def pprint(self):
 		print(f"(program\n(locals . {self.uncover_locs()})",)

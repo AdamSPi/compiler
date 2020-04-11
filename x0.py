@@ -1,4 +1,5 @@
 from rand import RAND
+from flags import MAC_OS
 
 class xARG:
 	def __init__(self):
@@ -9,6 +10,12 @@ class xARG:
 
 	def assign(self, σ):
 		return self
+
+	def w(self):
+		return set()
+
+	def r(self):
+		return set()
 
 
 class xNUM(xARG):
@@ -79,6 +86,12 @@ class xVAR(xARG):
 	def assign(self, σ):
 		return σ[self.name]
 
+	def w(self):
+		return set([self.name])
+
+	def r(self):
+		return set([self.name])
+
 
 
 # x86_64 register set
@@ -116,6 +129,12 @@ class INSTR:
 	def patch(self):
 		return [self]
 
+	def W(self):
+		return set()
+
+	def R(self):
+		return set()
+
 class xADD(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
@@ -138,6 +157,12 @@ class xADD(INSTR):
 				xADD(tmp_reg, self.dest)
 			]
 		return [self]
+
+	def W(self):
+		return self.dest.w()
+
+	def R(self):
+		return self.src.r() | self.dest.r()
 
 
 class xSUB(INSTR):
@@ -163,6 +188,12 @@ class xSUB(INSTR):
 			]
 		return [self]
 
+	def W(self):
+		return self.dest.w()
+
+	def R(self):
+		return self.src.r() | self.dest.r()
+
 
 class MOV(INSTR):
 	def __init__(self, src, dest):
@@ -187,6 +218,12 @@ class MOV(INSTR):
 			]
 		return [self]
 
+	def W(self):
+		return self.dest.w()
+
+	def R(self):
+		return self.src.r()
+
 class xRET(INSTR):
 	def __init__(self):
 		self.str = "retq"
@@ -208,16 +245,22 @@ class xNEG(INSTR):
 	def assign(self, σ):
 		return [xNEG(self.src.assign(σ))]
 
+	def W(self):
+		return self.src.w()
+
+	def R(self):
+		return self.src.r()
+
 class CALL(INSTR):
 	_db_cnt = RAND
 	_rd_cnt = 0
 
 	def __init__(self, label):
-		self.label = label
+		self.label = label if not MAC_OS else '_'+label
 		self.str = f"callq {self.label}"
 
 	def interp_e(self, ms, db, inp):
-		if self.label == "_read_int":
+		if self.label == "read_int":
 			if db:
 				if inp:
 					ms[rax] = xNUM(inp)
@@ -231,7 +274,7 @@ class CALL(INSTR):
 
 class JMP(INSTR):
 	def __init__(self, label):
-		self.label = label
+		self.label = label if not MAC_OS else '_'+label
 		self.str = f"jmp {self.label}"
 
 	def interp_e(self, ms, db, inp):
@@ -265,6 +308,9 @@ class POP(INSTR):
 	def assign(self, σ):
 		return [POP(self.src.assign(σ))]
 
+	def W(self):
+		return self.src.w()
+
 
 
 class BLCK:
@@ -293,6 +339,20 @@ class BLCK:
 	def pprint(self):
 		for ins in self.instr:
 			print(ins)
+
+	def uncover_live(self):
+		liveness = {}
+		for k in range(len(self.instr)):
+			liv_vars = self.liv_after(k)
+			liveness[k+2] = liv_vars
+		return liveness
+
+	def liv_befor(self, k):
+		instr = self.instr[k]
+		return (self.liv_after(k) - instr.W()) | instr.R() 
+
+	def liv_after(self, k):
+		return set() if k == len(self.instr)-1 else self.liv_befor(k+1)
 
 init_ms = {
 	rsp: xNUM(0),
@@ -325,7 +385,7 @@ class X:
 		global RAND
 		if reset:
 			CALL._db_cnt = RAND
-		return  self.ms["_start"].interp(self.ms, db, inp)
+		return  self.ms["start"].interp(self.ms, db, inp)
 
 	def assign_homes(self):
 		n = len(self.info['locals'])
@@ -334,7 +394,7 @@ class X:
 		σ = {}
 		for i in range(n):
 			σ[self.info['locals'][i]] = DREF(rbp, -8*(i+1))
-		body_blck = self.ms['_start'].assign({}, σ)
+		body_blck = self.ms['start'].assign({}, σ)
 
 		start_blck = BLCK(
 			{},
@@ -342,7 +402,7 @@ class X:
 				PUSH(rbp),
 				MOV(rsp, rbp),
 				xSUB(xNUM(vc*8), rsp),
-				JMP('_body')
+				JMP('body')
 			]
 		)
 		end_blck = BLCK(
@@ -354,16 +414,16 @@ class X:
 			]
 		)
 		new_ms = {
-			'_start': start_blck,
-			'_end': end_blck,
-			'_body': body_blck
+			'start': start_blck,
+			'end': end_blck,
+			'body': body_blck
 		}
 		return X(self.info, new_ms)
 
 	def patch_instr(self):
 		new_ms = self.ms.copy()
-		body_blck = new_ms['_body'].patch({})
-		new_ms['_body'] = body_blck
+		body_blck = new_ms['body'].patch({})
+		new_ms['body'] = body_blck
 		return X(self.info, new_ms)
 
 	def main_gen(self):
@@ -372,21 +432,28 @@ class X:
 			[
 				PUSH(rbp),
 				MOV(rsp, rbp),
-				CALL('_start'),
+				CALL('start'),
 				MOV(rax, rdi),
-				CALL('_print_int'),
+				CALL('print_int'),
 				POP(rbp),
 				xRET()
 			]
 		)
 		new_ms = self.ms.copy()
-		new_ms['_main'] = main_blck
+		new_ms['main'] = main_blck
 		return X(self.info, new_ms)
 
+	def uncover_live(self):
+		live_set  = self.ms['start'].uncover_live()
+		new_inf = {**self.info,  **{'liveness':  live_set}}
+		return X(new_inf, self.ms)
+
 	def pprint(self):
-		print('.section    __TEXT,__text')
-		print('.globl _main')
-		for k in ['_start', '_body', '_end', '_main']:
+		print('.data')
+		print('.text')
+		print('.globl main')
+		for k in ['start', 'body', 'end', 'main']:
 			if k in self.ms:
-				print(f'\n{k}:')
-				self.ms[k].pprint()
+				l = k if not MAC_OS else ('_' + k)
+				print(f'\n{l}:')
+				self.ms[l].pprint()

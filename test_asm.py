@@ -212,18 +212,20 @@ def test_asm():
 		os.system('make build')
 		
 		i = 0
+		# run program with automated input
+		proc = pexpect.spawn('./x.bin')
 		
-		child = pexpect.spawn('./x.bin')
-		
-		while child.isalive():
+		while 1:
 			try:
-				child.expect('read_int')
-				child.sendline(f'{RAND-i}')
+				proc.expect('read_int')
+				proc.sendline(f'{RAND-i}')
 				i += 1
 			except:
 				break
-		nums = re.findall(r'-?\d+', str(child.before)) 
-		assert r_ast.opt().interp(True, True) == int(list(map(int, nums))[-1])
+		nums = re.findall(r'-?\d+', str(proc.before))
+		asm_ans = int(list(map(int, nums))[-1])
+		assert r_ast.opt().interp(True, True) == asm_ans
+		assert x.interp(True, True)[rax] == asm_ans
 
 def test_asm_gen():
 	for n in range(8):
@@ -238,15 +240,17 @@ def test_asm_gen():
 		os.system('make build')
 		
 		i = 0
+		# run program with automated input
+		proc = pexpect.spawn('./x.bin')
 		
-		child = pexpect.spawn('./x.bin')
-		
-		while child.isalive():
+		while 1:
 			try:
-				child.expect('read_int')
-				child.sendline(f'{RAND-i}')
+				proc.expect('read_int')
+				proc.sendline(f'{RAND-i}')
 				i += 1
 			except:
 				break
-		nums = re.findall(r'-?\d+', str(child.before)) 
-		assert r_ast.opt().interp(True, True) == int(list(map(int, nums))[-1])
+		nums = re.findall(r'-?\d+', str(proc.before))
+		asm_ans = int(list(map(int, nums))[-1])
+		assert r_ast.opt().interp(True, True) == asm_ans
+		assert x.interp(True, True)[rax] == asm_ans

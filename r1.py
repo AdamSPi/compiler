@@ -390,7 +390,7 @@ class P:
 			   self.uniqueify().rcoify().expcon()
 
 	def to_x(self, opt=0):
-		return self.to_c(opt).select()
+		return self.to_c(opt).uncover_locs().select()
 
 	def to_asm(self, opt=0):
 		return self.to_x(opt).assign_homes().patch_instr().main_gen()
