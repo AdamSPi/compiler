@@ -41,7 +41,7 @@ def test_patch_instr():
 		x_prog = r_ast.to_x(1)
 		assert r_ast.opt().interp(True, True) == x_prog.assign_homes().patch_instr().interp(True, True)[rax]
 
-def test_uncover_live():
+def test_uncover_live_sample():
 	test_blck = BLCK(
 	{}, 
 	[
@@ -64,19 +64,25 @@ def test_uncover_live():
 	x = X({}, {'start': test_blck})
 
 	exp_res = {
-		2: {'v'},
-		3: {'w', 'v'},
-		4: {'w', 'x'},
-		5: {'w', 'x'},
-		6: {'y', 'w', 'x'},
-		7: {'y', 'w', 'x'},
-		8: {'z', 'y', 'w'},
-		9: {'z', 'y'},
-		10: {'z', 't.1'},
-		11: {'t.1', 'z'},
-		12: {'t.1'},
-		13: set(),
-		14: set()
+		0: {'v'},
+		1: {'w', 'v'},
+		2: {'w', 'x'},
+		3: {'w', 'x'},
+		4: {'y', 'w', 'x'},
+		5: {'y', 'w', 'x'},
+		6: {'z', 'y', 'w'},
+		7: {'z', 'y'},
+		8: {'z', 't.1'},
+		9: {'t.1', 'z'},
+		10: {'t.1'},
+		11: set(),
+		12: set()
 	}
 
 	assert x.uncover_live().info['liveness'] == exp_res
+
+def test_uncover_live():
+	for n in range(12):
+		r_ast = gen(rand_r1, n)
+		x_prog = r_ast.to_x(1)
+		assert r_ast.opt().interp(True, True) == x_prog.uncover_live().interp(True, True, gc=True)[rax]

@@ -7,6 +7,7 @@ import pexpect
 import re
 
 from rand import RAND
+from flags import MAC_OS
 
 r = \
 	P(

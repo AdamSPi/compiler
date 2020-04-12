@@ -1,0 +1,1 @@
+If running on macOS, set the MAC_OS line in flags.py to 1 o.w. set to 0.

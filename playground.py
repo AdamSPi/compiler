@@ -130,6 +130,8 @@ test_blck = BLCK(
 
 x = X({}, {'start': test_blck})
 print(x.uncover_live().info)
+import pdb; pdb.set_trace()
+x.uncover_live().interp(True, True, gc=True)
 
 # {
 # 2: {'v'},

@@ -260,7 +260,7 @@ class CALL(INSTR):
 		self.str = f"callq {self.label}"
 
 	def interp_e(self, ms, db, inp):
-		if self.label == "read_int":
+		if self.label == "read_int" or self.label == "_read_int":
 			if db:
 				if inp:
 					ms[rax] = xNUM(inp)
@@ -278,7 +278,8 @@ class JMP(INSTR):
 		self.str = f"jmp {self.label}"
 
 	def interp_e(self, ms, db, inp):
-		return ms[self.label].interp(ms, db, inp)
+		label = self.label[1:] if MAC_OS else self.label
+		return ms[label].interp(ms, db, inp)
 
 class PUSH(INSTR):
 	def __init__(self, src):
@@ -319,9 +320,16 @@ class BLCK:
 		# a list of INSTR objects
 		self.instr = instr
 
-	def interp(self, ms, db, inp):
-		for ins in self.instr:
-			ms = ins.interp_e(ms, db, inp)
+	def interp(self, ms, db, inp, info={}):
+		live_vars = set()
+		for k in range(len(self.instr)):
+			ms = self.instr[k].interp_e(ms, db, inp)
+			if info:
+				live_inf = info['liveness']
+				dead_vars = live_vars - live_inf[k]
+				live_vars = live_inf[k]
+				for var in dead_vars:
+					del ms[var]
 		return ms
 
 	def assign(self, info, σ):
@@ -344,7 +352,7 @@ class BLCK:
 		liveness = {}
 		for k in range(len(self.instr)):
 			liv_vars = self.liv_after(k)
-			liveness[k+2] = liv_vars
+			liveness[k] = liv_vars
 		return liveness
 
 	def liv_befor(self, k):
@@ -379,13 +387,14 @@ class X:
 		# a dict of labels to blocks
 		self.ms = {**init_ms, **ms}
 
-	def interp(self, db=False, reset=False, inp=0):
+	def interp(self, db=False, reset=False, inp=0, gc=False):
 		# ms := (reg -> num) x (addr(num) -> num) x
 		#       (var -> num) x (label(str) -> block)
 		global RAND
 		if reset:
 			CALL._db_cnt = RAND
-		return  self.ms["start"].interp(self.ms, db, inp)
+		return  self.ms["start"].interp(self.ms, db, inp, self.info) if gc else \
+				self.ms["start"].interp(self.ms, db, inp)
 
 	def assign_homes(self):
 		n = len(self.info['locals'])
@@ -448,12 +457,16 @@ class X:
 		new_inf = {**self.info,  **{'liveness':  live_set}}
 		return X(new_inf, self.ms)
 
+	def interference(self):
+		pass
+
 	def pprint(self):
 		print('.data')
 		print('.text')
-		print('.globl main')
+		lmain = '_main' if MAC_OS else 'main'
+		print(f'.globl {lmain}')
 		for k in ['start', 'body', 'end', 'main']:
 			if k in self.ms:
 				l = k if not MAC_OS else ('_' + k)
 				print(f'\n{l}:')
-				self.ms[l].pprint()
+				self.ms[k].pprint()
