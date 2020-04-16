@@ -4,6 +4,8 @@ import sys
 
 import pexpect
 
+import matplotlib.pyplot as plt
+
 import re
 
 from rand import RAND
@@ -110,7 +112,7 @@ rco_ast = P(\
 
 
 test_blck = BLCK(
-	{}, 
+	{'locals': ['v', 'w', 'x', 'y', 'z', 't.1']}, 
 	[
 	MOV(xNUM(1), xVAR('v')),
 	MOV(xNUM(46), xVAR('w')),
@@ -129,9 +131,9 @@ test_blck = BLCK(
 )
 
 x = X({}, {'start': test_blck})
-print(x.uncover_live().info)
-import pdb; pdb.set_trace()
-x.uncover_live().interp(True, True, gc=True)
+x_graph = x.uncover_live().intf_graph()
+print(x_graph)
+# x.uncover_live().interp(True, True, gc=True)
 
 # {
 # 2: {'v'},

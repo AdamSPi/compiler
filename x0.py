@@ -1,6 +1,8 @@
 from rand import RAND
 from flags import MAC_OS
 
+import networkx as nx
+
 class xARG:
 	def __init__(self):
 		pass
@@ -135,6 +137,9 @@ class INSTR:
 	def R(self):
 		return set()
 
+	def build_intf_edges(self, live_vars):
+		return {}
+
 class xADD(INSTR):
 	def __init__(self, src, dest):
 		self.src = src
@@ -163,6 +168,16 @@ class xADD(INSTR):
 
 	def R(self):
 		return self.src.r() | self.dest.r()
+
+	def build_intf_edges(self, live_vars):
+		if type(self.dest) == DREF:
+			return []
+		intf_vars = []
+		for v in live_vars:
+			if v == self.dest.str:
+				continue
+			intf_vars += [(self.dest.str, v)]
+		return intf_vars
 
 
 class xSUB(INSTR):
@@ -194,6 +209,16 @@ class xSUB(INSTR):
 	def R(self):
 		return self.src.r() | self.dest.r()
 
+	def build_intf_edges(self, live_vars):
+		if type(self.dest) == DREF:
+			return []
+		intf_vars = []
+		for v in live_vars:
+			if v == self.dest.str:
+				continue
+			intf_vars += [(self.dest.str, v)]
+		return intf_vars
+
 
 class MOV(INSTR):
 	def __init__(self, src, dest):
@@ -224,6 +249,16 @@ class MOV(INSTR):
 	def R(self):
 		return self.src.r()
 
+	def build_intf_edges(self, live_vars):
+		if type(self.dest) == DREF:
+			return []
+		intf_vars = []
+		for v in live_vars:
+			if v in [self.dest.str, self.src.str]:
+				continue
+			intf_vars += [(self.dest.str, v)]
+		return intf_vars
+
 class xRET(INSTR):
 	def __init__(self):
 		self.str = "retq"
@@ -251,6 +286,16 @@ class xNEG(INSTR):
 	def R(self):
 		return self.src.r()
 
+	def build_intf_edges(self, live_vars):
+		if type(self.src) == DREF:
+			return []
+		intf_vars = []
+		for v in live_vars:
+			if v == self.src.str:
+				continue
+			intf_vars += [(self.src.str, v)]
+		return intf_vars
+
 class CALL(INSTR):
 	_db_cnt = RAND
 	_rd_cnt = 0
@@ -271,6 +316,13 @@ class CALL(INSTR):
 				ms[rax] = xNUM(int(input("Input an integer: ",)))
 			CALL._rd_cnt += 1
 			return ms
+
+	def build_intf_edges(self, live_vars):
+		intf_vars = []
+		for r in ['%rax', '%rdx', '%rcx', '%rsi', '%rdi', '%r8', '%r9', '%r10', '%r11']:
+			for v in live_vars:
+				intf_vars += [(r, v)]
+		return intf_vars
 
 class JMP(INSTR):
 	def __init__(self, label):
@@ -311,6 +363,16 @@ class POP(INSTR):
 
 	def W(self):
 		return self.src.w()
+
+	def build_intf_edges(self, live_vars):
+		if type(self.dest) == DREF:
+			return []
+		intf_vars = []
+		for v in live_vars:
+			if v == self.src.str:
+				continue
+			intf_vars += [(self.src.str, v)]
+		return intf_vars
 
 
 
@@ -361,6 +423,16 @@ class BLCK:
 
 	def liv_after(self, k):
 		return set() if k == len(self.instr)-1 else self.liv_befor(k+1)
+
+	def build_intf_graph(self, info):
+		g = nx.Graph()
+		g.add_nodes_from(['%rax', '%rdx', '%rcx', '%rsi', '%rdi', '%r8', '%r9', '%r10', '%r11'])
+		g.add_nodes_from(self.info['locals'])
+
+		for k in range(len(self.instr)):
+			live_vars = info['liveness'][k]
+			g.add_edges_from(self.instr[k].build_intf_edges(live_vars))
+		return nx.to_dict_of_lists(g)
 
 init_ms = {
 	rsp: xNUM(0),
@@ -457,8 +529,10 @@ class X:
 		new_inf = {**self.info,  **{'liveness':  live_set}}
 		return X(new_inf, self.ms)
 
-	def interference(self):
-		pass
+	def intf_graph(self):
+		intf_map = self.ms['start'].build_intf_graph(self.info)
+		# new_inf = {**self.info, **{'interference': intf_map}}
+		return intf_map
 
 	def pprint(self):
 		print('.data')
