@@ -46,7 +46,7 @@ class xNUM(xARG):
 	def interp_a(self, ms, db, inp):
 		return self
 
-	def interp_d(self, ms=0, db=0, inp=0):
+	def interp_d(self, ms, db, inp):
 		return self.num
 
 class register(xARG):
@@ -57,7 +57,7 @@ class register(xARG):
 	def interp_a(self, ms, db, inp):
 		return ms[self]
 
-	def interp_d(self, ms=0, db=0, inp=0):
+	def interp_d(self, ms, db, inp):
 		return self
 
 class DREF(xARG):
@@ -82,7 +82,7 @@ class xVAR(xARG):
 	def interp_a(self, ms, db, inp):
 		return ms[self.name]
 
-	def interp_d(self, ms=0, db=0, inp=0):
+	def interp_d(self, ms, db, inp):
 		return self.name
 
 	def assign(self, σ):
@@ -115,8 +115,8 @@ r14 = register("r14")
 r15 = register("r15")
 
 caller_sav_reg = [
-	rax, rdx, rcx, rsi,
-	rdi, r8, r9, r10, r11
+	'%rax','%rdx', '%rcx', '%rsi',
+	'%rdi', '%r8', '%r9', '%r10', '%r11'
 ]
 
 
@@ -182,9 +182,9 @@ class xADD(INSTR):
 			return []
 		intf_vars = []
 		for v in live_vars:
-			if v == self.dest.interp_d():
+			if v == self.dest.str:
 				continue
-			intf_vars += [(self.dest.interp_d(), v)]
+			intf_vars += [(self.dest.str, v)]
 		return intf_vars
 
 
@@ -222,9 +222,9 @@ class xSUB(INSTR):
 			return []
 		intf_vars = []
 		for v in live_vars:
-			if v == self.dest.interp_d():
+			if v == self.dest.str:
 				continue
-			intf_vars += [(self.dest.interp_d(), v)]
+			intf_vars += [(self.dest.str, v)]
 		return intf_vars
 
 
@@ -262,16 +262,10 @@ class MOV(INSTR):
 			return []
 		intf_vars = []
 		for v in live_vars:
-			if v in [self.dest.interp_d(), self.src.interp_d()]:
+			if v in [self.dest.str, self.src.str]:
 				continue
-			intf_vars += [(self.dest.interp_d(), v)]
+			intf_vars += [(self.dest.str, v)]
 		return intf_vars
-
-	def build_mov_edges(self):
-		if type(self.dest) == DREF or \
-		   type(self.src) == xNUM:
-			return []
-		return [(self.src.interp_d(), self.dest.interp_d())]
 
 class xRET(INSTR):
 	def __init__(self):
@@ -305,9 +299,9 @@ class xNEG(INSTR):
 			return []
 		intf_vars = []
 		for v in live_vars:
-			if v == self.src.interp_d():
+			if v == self.src.str:
 				continue
-			intf_vars += [(self.src.interp_d(), v)]
+			intf_vars += [(self.src.str, v)]
 		return intf_vars
 
 class CALL(INSTR):
@@ -383,9 +377,9 @@ class POP(INSTR):
 			return []
 		intf_vars = []
 		for v in live_vars:
-			if v == self.src.interp_d():
+			if v == self.src.str:
 				continue
-			intf_vars += [(self.src.interp_d(), v)]
+			intf_vars += [(self.src.str, v)]
 		return intf_vars
 
 

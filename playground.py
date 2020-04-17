@@ -4,8 +4,6 @@ import sys
 
 import pexpect
 
-import matplotlib.pyplot as plt
-
 import re
 
 from rand import RAND
@@ -133,6 +131,9 @@ test_blck = BLCK(
 x = X({}, {'start': test_blck})
 x_graph = x.uncover_live().intf_graph()
 print(x_graph)
+print()
+print()
+print(x.uncover_live().mov_graph())
 # x.uncover_live().interp(True, True, gc=True)
 
 # {
