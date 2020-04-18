@@ -74,7 +74,7 @@ def test_uncover_live_sample():
 		7: {'z', 'y'},
 		8: {'z', 't.1'},
 		9: {'t.1', 'z'},
-		10: {'t.1'},
+		10: {'t.1', rax},
 		11: set(),
 		12: set()
 	}

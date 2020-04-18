@@ -60,6 +60,16 @@ class register(xARG):
 	def interp_d(self, ms=0, db=0, inp=0):
 		return self
 
+	def w(self):
+		if self in caller_sav_reg:
+			return set([self])
+		return set()
+
+	def r(self):
+		if self in caller_sav_reg:
+			return set([self])
+		return set()
+
 class DREF(xARG):
 	def __init__(self, reg, offset=0):
 		self.reg = reg
@@ -395,6 +405,7 @@ class BLCK:
 		self.info = info
 		# a list of INSTR objects
 		self.instr = instr
+		ik_live_vars = {}
 
 	def interp(self, ms, db, inp, info={}):
 		live_vars = set()
@@ -403,7 +414,6 @@ class BLCK:
 			if info:
 				live_inf = info['liveness']
 				dead_vars = live_vars - live_inf[k]
-				live_vars = live_inf[k]
 				for var in dead_vars:
 					del ms[var]
 		return ms
@@ -426,17 +436,22 @@ class BLCK:
 
 	def uncover_live(self):
 		liveness = {}
-		for k in range(len(self.instr)):
-			liv_vars = self.liv_after(k)
-			liveness[k] = liv_vars
+		liv_vars = set()
+		for k in reversed(range(len(self.instr))):
+			if k == len(self.instr)-1:
+				liveness[k] = liv_vars
+			else:
+				instr = self.instr[k+1]
+				liv_vars = (liv_vars - instr.W()) | instr.R() 
+				liveness[k] = liv_vars
 		return liveness
 
-	def liv_befor(self, k):
-		instr = self.instr[k]
-		return (self.liv_after(k) - instr.W()) | instr.R() 
+	# def liv_befor(self, k):
+	# 	instr = self.instr[k]
+	# 	return (self.liv_after(k) - instr.W()) | instr.R()
 
-	def liv_after(self, k):
-		return set() if k == len(self.instr)-1 else self.liv_befor(k+1)
+	# def liv_after(self, k):
+	# 	return set() if k == len(self.instr)-1 else self.liv_befor(k+1)
 
 	def build_intf_graph(self, info):
 		g = nx.Graph()

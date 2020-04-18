@@ -1,41 +1,55 @@
 .data
 .text
-.globl _main
+.globl main
 
-_start:
+start:
 pushq %rbp
 movq %rsp, %rbp
-subq $48, %rsp
-jmp _body
+subq $80, %rsp
+jmp body
 
-_body:
-callq _read_int
+body:
+callq read_int
 movq %rax, -8(%rbp)
-movq -8(%rbp), %rax
+callq read_int
 movq %rax, -16(%rbp)
-addq $355, -16(%rbp)
 movq -16(%rbp), %rax
 movq %rax, -24(%rbp)
-negq -24(%rbp)
-movq $-2, -32(%rbp)
+movq -8(%rbp), %rax
+addq %rax, -24(%rbp)
+movq $-106, -32(%rbp)
 movq -24(%rbp), %rax
 addq %rax, -32(%rbp)
 movq -32(%rbp), %rax
 movq %rax, -40(%rbp)
 negq -40(%rbp)
 movq -40(%rbp), %rax
-jmp _end
+movq %rax, -48(%rbp)
+movq -24(%rbp), %rax
+addq %rax, -48(%rbp)
+movq -48(%rbp), %rax
+movq %rax, -56(%rbp)
+movq -24(%rbp), %rax
+addq %rax, -56(%rbp)
+movq -56(%rbp), %rax
+movq %rax, -64(%rbp)
+addq $54, -64(%rbp)
+movq -64(%rbp), %rax
+movq %rax, -72(%rbp)
+negq -72(%rbp)
+movq -72(%rbp), %rax
+jmp end
 
-_end:
-addq $48, %rsp
+end:
+addq $80, %rsp
 popq %rbp
 retq
 
-_main:
+main:
 pushq %rbp
 movq %rsp, %rbp
-callq _start
+callq start
 movq %rax, %rdi
-callq _print_int
+callq print_int
 popq %rbp
 retq

@@ -124,7 +124,7 @@ test_blck = BLCK(
 	xNEG(xVAR('t.1')),
 	MOV(xVAR('z'), rax),
 	xADD(xVAR('t.1'), rax),
-	JMP('conclusion')
+	xRET()
 	]
 )
 
@@ -134,6 +134,9 @@ print(x_graph)
 print()
 print()
 print(x.uncover_live().mov_graph())
+print()
+print()
+print(x.uncover_live().interp(True, True, gc=True)[rax])
 # x.uncover_live().interp(True, True, gc=True)
 
 # {
