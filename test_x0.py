@@ -1,7 +1,7 @@
 from r1 import *
 
 
-dbl_main_blck = BLCK({}, [
+dbl_main_blck = BLCK([
 		MOV(xNUM(5), rax),
 		xADD(rax, rax),
 		xRET()
@@ -15,7 +15,7 @@ x0_test = X({}, dbl_ms)
 def test_x0_double():
 	assert x0_test.interp()[rax] == xNUM(10)
 
-read_dubl_main_blck = BLCK({}, [
+read_dubl_main_blck = BLCK([
 		CALL('read_int'),
 		xADD(rax, rax),
 		xRET()
@@ -43,7 +43,6 @@ def test_patch_instr():
 
 def test_uncover_live_sample():
 	test_blck = BLCK(
-	{}, 
 	[
 	MOV(xNUM(1), xVAR('v')),
 	MOV(xNUM(46), xVAR('w')),
@@ -86,3 +85,10 @@ def test_uncover_live():
 		r_ast = gen(rand_r1, n)
 		x_prog = r_ast.to_x(1)
 		assert r_ast.opt().interp(True, True) == x_prog.uncover_live().interp(True, True, gc=True)[rax]
+
+def test_allocated_regs():
+	for n in range(12):
+		r_ast = gen(rand_r1, n)
+		x_prog = r_ast.to_x(1)
+		assert r_ast.opt().interp(True, True) == x_prog.uncover_live().allocate_regs().assign_regs().interp(True, True)[rax]
+

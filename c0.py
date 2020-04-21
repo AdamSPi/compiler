@@ -217,8 +217,8 @@ class C:
 		return C({'locals': self.env['body'].uncover_locs()}, self.env)
 
 	def select(self):
-		body_blck = BLCK({}, self.env['body'].select_t())
-		end_blck = BLCK({},  [xRET()])
+		body_blck = BLCK(self.env['body'].select_t())
+		end_blck = BLCK([xRET()])
 
 		return X(self.info, {'start': body_blck, 'end': end_blck})
 

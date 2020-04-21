@@ -343,7 +343,7 @@ class CALL(INSTR):
 
 	def build_intf_edges(self, live_vars):
 		intf_vars = []
-		for r in ['%rax', '%rdx', '%rcx', '%rsi', '%rdi', '%r8', '%r9', '%r10', '%r11']:
+		for r in caller_sav_reg:
 			for v in live_vars:
 				intf_vars += [(r, v)]
 		return intf_vars
@@ -401,8 +401,7 @@ class POP(INSTR):
 
 
 class BLCK:
-	def __init__(self, info, instr):
-		self.info = info
+	def __init__(self, instr):
 		# a list of INSTR objects
 		self.instr = instr
 		ik_live_vars = {}
@@ -418,17 +417,17 @@ class BLCK:
 					del ms[var]
 		return ms
 
-	def assign(self, info, σ):
+	def assign(self, σ):
 		ni = []
 		for ins in self.instr:
 			ni += ins.assign(σ)
-		return BLCK(info, ni)
+		return BLCK(ni)
 
-	def patch(self, info):
+	def patch(self):
 		ni = []
 		for ins in self.instr:
 			ni += ins.patch()
-		return BLCK(info, ni)
+		return BLCK(ni)
 
 	def pprint(self):
 		for ins in self.instr:
@@ -456,7 +455,7 @@ class BLCK:
 	def build_intf_graph(self, info):
 		g = nx.Graph()
 		g.add_nodes_from(caller_sav_reg)
-		g.add_nodes_from(self.info['locals'])
+		g.add_nodes_from(info['locals'])
 
 		for k in range(len(self.instr)):
 			live_vars = info['liveness'][k]
@@ -466,7 +465,7 @@ class BLCK:
 	def build_mov_graph(self, info):
 		g = nx.Graph()
 		g.add_nodes_from(caller_sav_reg)
-		g.add_nodes_from(self.info['locals'])
+		g.add_nodes_from(info['locals'])
 
 		for k in range(len(self.instr)):
 			g.add_edges_from(self.instr[k].build_mov_edges())
@@ -511,13 +510,16 @@ class X:
 		n = len(self.info['locals'])
 		vc = (n if n%2==0 else n+1)
 
-		σ = {}
+		if 'allocs' in self.info:
+			σ = self.info['allocs'].copy()
+		else:
+			σ = {}
+
 		for i in range(n):
 			σ[self.info['locals'][i]] = DREF(rbp, -8*(i+1))
-		body_blck = self.ms['start'].assign({}, σ)
+		body_blck = self.ms['start'].assign(σ)
 
 		start_blck = BLCK(
-			{},
 			[
 				PUSH(rbp),
 				MOV(rsp, rbp),
@@ -526,7 +528,6 @@ class X:
 			]
 		)
 		end_blck = BLCK(
-			{},
 			[
 				xADD(xNUM(vc*8), rsp),
 				POP(rbp),
@@ -542,13 +543,12 @@ class X:
 
 	def patch_instr(self):
 		new_ms = self.ms.copy()
-		body_blck = new_ms['body'].patch({})
+		body_blck = new_ms['body'].patch()
 		new_ms['body'] = body_blck
 		return X(self.info, new_ms)
 
 	def main_gen(self):
 		main_blck = BLCK(
-			{},
 			[
 				PUSH(rbp),
 				MOV(rsp, rbp),
@@ -577,6 +577,75 @@ class X:
 		mov_map = self.ms['start'].build_mov_graph(self.info)
 		# new_inf = {**self.info, **{'interference': intf_map}}
 		return mov_map
+
+	def allocate_regs(self):
+		i_graph = self.intf_graph()
+		mov_graph = self.mov_graph()
+		w = [(i, len(i_graph[i])) for i in i_graph.keys() if i_graph[i]]
+		# sort w based on saturation
+		w = sorted(w, key=lambda x: x[1])
+		color_graph = {}
+		v_allocs = {}
+		regs = [
+			rax, rbx, rdx, rcx, rsi, rdi,
+			r8, r9, r10, r11, r12, r13, r14, r15
+		]
+		for r in range(len(regs)):
+			# give regs colors
+			color_graph[regs[r]] = r
+		while w:
+			v, s = w.pop()
+			if type(v) == register:
+				continue
+			aval_colors = [c for c in range(len(regs))]
+			for u in i_graph[v]:
+				if u in color_graph:
+					if color_graph[u] in aval_colors:
+						aval_colors.remove(color_graph[u])
+			color_graph[v] = min(aval_colors) if aval_colors else []
+			if color_graph[v]: 
+				v_allocs[v] = regs[color_graph[v]]
+				# remove from locals in case we have to assign stack space later
+				if v in self.info['locals']:
+					self.info['locals'].remove(v)
+		new_inf = {**self.info, **{'allocs': v_allocs}}
+		return X(new_inf, self.ms)
+
+	def assign_regs(self):
+		n = len(self.info['locals'])
+		vc = (n if n%2==0 else n+1)
+
+		if 'allocs' in self.info:
+			σ = self.info['allocs'].copy()
+		else:
+			σ = {}
+
+		for i in range(n):
+			σ[self.info['locals'][i]] = DREF(rbp, -8*(i+1))
+
+		body_blck = self.ms['start'].assign(σ)
+
+		start_blck = BLCK(
+			[
+				PUSH(rbp),
+				MOV(rsp, rbp),
+				xSUB(xNUM(vc*8), rsp),
+				JMP('body')
+			]
+		)
+		end_blck = BLCK(
+			[
+				xADD(xNUM(vc*8), rsp),
+				POP(rbp),
+				xRET()
+			]
+		)
+		new_ms = {
+			'start': start_blck,
+			'end': end_blck,
+			'body': body_blck
+		}
+		return X(self.info, new_ms)
 
 	def pprint(self):
 		print('.data')

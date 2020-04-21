@@ -108,9 +108,7 @@ rco_ast = P(\
 # print(ans == rco_ast.interp(True, True))
 # import pdb; pdb.set_trace()
 
-
 test_blck = BLCK(
-	{'locals': ['v', 'w', 'x', 'y', 'z', 't.1']}, 
 	[
 	MOV(xNUM(1), xVAR('v')),
 	MOV(xNUM(46), xVAR('w')),
@@ -128,16 +126,16 @@ test_blck = BLCK(
 	]
 )
 
-x = X({}, {'start': test_blck})
-x_graph = x.uncover_live().intf_graph()
-print(x_graph)
-print()
-print()
-print(x.uncover_live().mov_graph())
-print()
-print()
-print(x.uncover_live().interp(True, True, gc=True)[rax])
-# x.uncover_live().interp(True, True, gc=True)
+# x = X({'locals': ['v', 'w', 'x', 'y', 'z', 't.1']}, {'start': test_blck})
+# x_graph = x.uncover_live().intf_graph()
+# print(x_graph)
+# print()
+
+test_ast = P(ADD(ADD(READ(), READ()), NUM(223)))
+x = test_ast.to_x(1)
+x1 = x.uncover_live().allocate_regs().assign_homes()
+
+import pdb; pdb.set_trace()
 
 # {
 # 2: {'v'},

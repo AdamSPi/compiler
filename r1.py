@@ -64,7 +64,7 @@ class LET(Expr):
 		self.xe = xe
 		self.be = be
 		self.pp = f"\n(let ([{self.var} {self.xe}]) {self.be})"
-		self.str = f"LET({self.var}, {self.xe}, {self.be})"
+		self.str = f"LET({self.var.str}, {self.xe.str}, {self.be.str})"
 
 	def interp(self, env, db, inp):
 		env_n = env.copy()
@@ -228,7 +228,7 @@ class NEG(Expr):
 	def __init__(self, e):
 		self.expr = e
 		self.pp = f"(- {self.expr})"
-		self.str = f"NEG({self.expr})"
+		self.str = f"NEG({self.expr.str})"
 
 	def interp(self, env, db, inp):
 		return 0 - self.expr.interp(env, db, inp)
@@ -261,7 +261,7 @@ class ADD(Expr):
 	def __init__(self, e1, e2):
 		self.lhs, self.rhs = e1, e2
 		self.pp = f"(+ {self.lhs} {self.rhs})"
-		self.str = f"ADD({self.lhs}, {self.rhs})"
+		self.str = f"ADD({self.lhs.str}, {self.rhs.str})"
 
 	def interp(self, env, db, inp):
 		return self.lhs.interp(env, db, inp) + self.rhs.interp(env, db, inp)
@@ -345,7 +345,7 @@ class P:
 	def __init__(self, e):
 		self.expr = e
 		self.pp = f"(program () {e}\n)"
-		self.str = f"P({e})"
+		self.str = f"P({e.str})"
 
 	def pprint(self):
 		print(self.pp)
@@ -359,7 +359,7 @@ class P:
 
 	def opt(self):
 		# running unqify before opt simplifies the opt code
-		# while retaining optimal output/////////////
+		# while retaining optimal output
 		return P(self.expr.uniqueify({}).opt({}))
 
 	def uniqueify(self):
@@ -394,6 +394,9 @@ class P:
 
 	def to_asm(self, opt=0):
 		return self.to_x(opt).assign_homes().patch_instr().main_gen()
+
+	def to_asm_w_reg_alloc(self, opt=0):
+		return self.to_x(opt).uncover_live().allocate_regs().assign_regs().patch_instr().main_gen()
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()
