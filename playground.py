@@ -108,34 +108,48 @@ rco_ast = P(\
 # print(ans == rco_ast.interp(True, True))
 # import pdb; pdb.set_trace()
 
-test_blck = BLCK(
-	[
-	MOV(xNUM(1), xVAR('v')),
-	MOV(xNUM(46), xVAR('w')),
-	MOV(xVAR('v'), xVAR('x')),
-	xADD(xNUM(7), xVAR('x')),
-	MOV(xVAR('x'), xVAR('y')),
-	xADD(xNUM(4), xVAR('y')),
-	MOV(xVAR('x'), xVAR('z')),
-	xADD(xVAR('w'), xVAR('z')),
-	MOV(xVAR('y'), xVAR('t.1')),
-	xNEG(xVAR('t.1')),
-	MOV(xVAR('z'), rax),
-	xADD(xVAR('t.1'), rax),
-	xRET()
-	]
-)
+# test_blck = BLCK(
+# 	[
+# 	MOV(xNUM(1), xVAR('v')),
+# 	MOV(xNUM(46), xVAR('w')),
+# 	MOV(xVAR('v'), xVAR('x')),
+# 	xADD(xNUM(7), xVAR('x')),
+# 	MOV(xVAR('x'), xVAR('y')),
+# 	xADD(xNUM(4), xVAR('y')),
+# 	MOV(xVAR('x'), xVAR('z')),
+# 	xADD(xVAR('w'), xVAR('z')),
+# 	MOV(xVAR('y'), xVAR('t.1')),
+# 	xNEG(xVAR('t.1')),
+# 	MOV(xVAR('z'), rax),
+# 	xADD(xVAR('t.1'), rax),
+# 	xRET()
+# 	]
+# )
 
 # x = X({'locals': ['v', 'w', 'x', 'y', 'z', 't.1']}, {'start': test_blck})
-# x_graph = x.uncover_live().intf_graph()
-# print(x_graph)
-# print()
 
-test_ast = P(ADD(ADD(READ(), READ()), NUM(223)))
-x = test_ast.to_x(1)
-x1 = x.uncover_live().allocate_regs().assign_homes()
+# x1 = x.uncover_live().allocate_regs().assign_regs().patch_instr()
 
-import pdb; pdb.set_trace()
+# x = X({'locals': ['v', 'w', 'x', 'y', 'z', 't.1']}, {'start': test_blck})
+
+# x2 = x.uncover_live().allocate_regs(1).assign_regs().patch_instr()
+
+# x.interp(True, True)
+# x1.interp(True, True)
+# x2.interp(True, True)
+
+# n = 0
+# while 1:
+# 		r_ast = gen(rand_r1, 3)
+# 		x1 = r_ast.to_asm_w_reg_alloc(1, 1)
+# 		x2 = r_ast.to_asm_w_reg_alloc(1)
+# 		if x1.ms['body'].to_str() != x2.ms['body'].to_str():
+# 			print(x1.interp(True, True)[rax] == x2.interp(True, True)[rax])
+# 			import pdb; pdb.set_trace()
+# 		n += 1
+
+# import pdb; pdb.set_trace()
+
 
 # {
 # 2: {'v'},

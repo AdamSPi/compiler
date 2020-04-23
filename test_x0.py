@@ -92,3 +92,18 @@ def test_allocated_regs():
 		x_prog = r_ast.to_x(1)
 		assert r_ast.opt().interp(True, True) == x_prog.uncover_live().allocate_regs().assign_regs().interp(True, True)[rax]
 
+def test_move_biasing():
+	for n in range(3,8):
+		stop = False
+		while not stop:
+			r_ast = gen(rand_r1, n)
+			x1 = r_ast.to_asm_w_reg_alloc(1, 1)
+			x2 = r_ast.to_asm_w_reg_alloc(1)
+			if x1.ms['body'].to_str() != x2.ms['body'].to_str():
+				assert x1.interp(True, True)[rax] == x2.interp(True, True)[rax]
+				assert len(x1.ms['body'].instr) <= len(x2.ms['body'].instr)
+				stop = True
+
+
+
+

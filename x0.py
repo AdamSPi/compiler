@@ -129,6 +129,10 @@ caller_sav_reg = [
 	rdi, r8, r9, r10, r11
 ]
 
+regs = [
+	rax, rbx, rcx, rdx, rsi, rdi,
+	r8, r9, r10, r11, r12, r13, r14, r15
+]
 
 class INSTR:
 	def __init__(self):
@@ -259,6 +263,8 @@ class MOV(INSTR):
 				MOV(self.src, tmp_reg),
 				MOV(tmp_reg, self.dest)
 			]
+		if type(self.src) == type(self.dest) and self.src == self.dest:
+			return []
 		return [self]
 
 	def W(self):
@@ -404,7 +410,6 @@ class BLCK:
 	def __init__(self, instr):
 		# a list of INSTR objects
 		self.instr = instr
-		ik_live_vars = {}
 
 	def interp(self, ms, db, inp, info={}):
 		live_vars = set()
@@ -433,6 +438,12 @@ class BLCK:
 		for ins in self.instr:
 			print(ins)
 
+	def to_str(self):
+		s = ""
+		for ins in self.instr:
+			s += ins.str + "\n"
+		return s
+
 	def uncover_live(self):
 		liveness = {}
 		liv_vars = set()
@@ -454,7 +465,7 @@ class BLCK:
 
 	def build_intf_graph(self, info):
 		g = nx.Graph()
-		g.add_nodes_from(caller_sav_reg)
+		g.add_nodes_from(regs)
 		g.add_nodes_from(info['locals'])
 
 		for k in range(len(self.instr)):
@@ -464,7 +475,7 @@ class BLCK:
 
 	def build_mov_graph(self, info):
 		g = nx.Graph()
-		g.add_nodes_from(caller_sav_reg)
+		g.add_nodes_from(regs)
 		g.add_nodes_from(info['locals'])
 
 		for k in range(len(self.instr)):
@@ -578,34 +589,51 @@ class X:
 		# new_inf = {**self.info, **{'interference': intf_map}}
 		return mov_map
 
-	def allocate_regs(self):
+	def allocate_regs(self, mv=0):
 		i_graph = self.intf_graph()
 		mov_graph = self.mov_graph()
+
+		def get_adj_color(v, s):
+			sat = set()
+			if v not in s:
+				return sat
+			for u in s[v]:
+				if u in color_graph:
+					sat |= set([color_graph[u]])
+			return sat
+
+		def get_color_w_mv(v):
+			sat = get_adj_color(v, i_graph)
+			m = get_adj_color(v, mov_graph)
+			look_first = m - sat
+			return min(look_first) if look_first else \
+				   min(aval_colors) if aval_colors else []
+
+
 		w = [(i, len(i_graph[i])) for i in i_graph.keys() if i_graph[i]]
 		# sort w based on saturation
 		w = sorted(w, key=lambda x: x[1])
 		color_graph = {}
 		v_allocs = {}
-		regs = [
-			rax, rbx, rdx, rcx, rsi, rdi,
-			r8, r9, r10, r11, r12, r13, r14, r15
-		]
 		for r in range(len(regs)):
 			# give regs colors
 			color_graph[regs[r]] = r
+		# color the graph
 		while w:
-			v, s = w.pop()
+			v, n = w.pop()
 			if type(v) == register:
 				continue
 			aval_colors = [c for c in range(len(regs))]
 			for u in i_graph[v]:
-				if u in color_graph:
-					if color_graph[u] in aval_colors:
-						aval_colors.remove(color_graph[u])
-			color_graph[v] = min(aval_colors) if aval_colors else []
-			if color_graph[v]: 
+				if u in color_graph and color_graph[u] in aval_colors:
+					aval_colors.remove(color_graph[u])
+			# if move-biasing enabled
+			color_graph[v] = get_color_w_mv(v) if mv else \
+							 min(aval_colors) if aval_colors else []
+			# if a reg was assigned
+			if color_graph[v] != []: 
 				v_allocs[v] = regs[color_graph[v]]
-				# remove from locals in case we have to assign stack space later
+				# remove this var from locals, any left will be allocated stack space
 				if v in self.info['locals']:
 					self.info['locals'].remove(v)
 		new_inf = {**self.info, **{'allocs': v_allocs}}
@@ -615,14 +643,10 @@ class X:
 		n = len(self.info['locals'])
 		vc = (n if n%2==0 else n+1)
 
-		if 'allocs' in self.info:
-			σ = self.info['allocs'].copy()
-		else:
-			σ = {}
+		σ = self.info['allocs'].copy()
 
 		for i in range(n):
 			σ[self.info['locals'][i]] = DREF(rbp, -8*(i+1))
-
 		body_blck = self.ms['start'].assign(σ)
 
 		start_blck = BLCK(

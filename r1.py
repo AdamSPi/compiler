@@ -395,8 +395,8 @@ class P:
 	def to_asm(self, opt=0):
 		return self.to_x(opt).assign_homes().patch_instr().main_gen()
 
-	def to_asm_w_reg_alloc(self, opt=0):
-		return self.to_x(opt).uncover_live().allocate_regs().assign_regs().patch_instr().main_gen()
+	def to_asm_w_reg_alloc(self, opt=0, mv=0):
+		return self.to_x(opt).uncover_live().allocate_regs(mv).assign_regs().patch_instr().main_gen()
 
 	def __eq__(self, rhs):
 		return self.show() == rhs.show()
