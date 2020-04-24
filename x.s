@@ -5,36 +5,42 @@
 _start:
 pushq %rbp
 movq %rsp, %rbp
+pushq %r12
+pushq %r13
+pushq %r14
+pushq %r15
 subq $16, %rsp
 jmp _body
 
 _body:
 callq _read_int
 movq %rax, -8(%rbp)
-movq -8(%rbp), %r13
-addq $212, %r13
-negq %r13
-callq _read_int
-movq %r13, %rbx
-addq %rax, %rbx
+movq -8(%rbp), %rcx
+addq $-227, %rcx
+movq %rcx, %rbx
+addq %rcx, %rbx
 negq %rbx
-addq %r13, %rbx
+addq %rbx, %rcx
+movq %rcx, %r12
+negq %r12
 callq _read_int
-movq %rax, %r12
-addq %r13, %r13
+movq %rax, %r13
 callq _read_int
-addq %rax, %r13
-negq %r13
-movq %r13, %rax
-addq %r12, %rax
-addq %rbx, %rax
-movq %rax, -16(%rbp)
+addq %r13, %rax
+movq $-217, %rbx
+addq %rax, %rbx
+addq %r12, %rbx
+movq %rbx, -16(%rbp)
 negq -16(%rbp)
 movq -16(%rbp), %rax
 jmp _end
 
 _end:
 addq $16, %rsp
+popq %r15
+popq %r14
+popq %r13
+popq %r12
 popq %rbp
 retq
 

@@ -125,7 +125,7 @@ r14 = register("r14")
 r15 = register("r15")
 
 caller_sav_reg = [
-	rax, rdx, rcx, rsi,
+	rax, rbx, rdx, rcx, rsi,
 	rdi, r8, r9, r10, r11
 ]
 
@@ -652,6 +652,10 @@ class X:
 			[
 				PUSH(rbp),
 				MOV(rsp, rbp),
+				PUSH(r12),
+				PUSH(r13),
+				PUSH(r14),
+				PUSH(r15),
 				xSUB(xNUM(vc*8), rsp),
 				JMP('body')
 			]
@@ -659,6 +663,10 @@ class X:
 		end_blck = BLCK(
 			[
 				xADD(xNUM(vc*8), rsp),
+				POP(r15),
+				POP(r14),
+				POP(r13),
+				POP(r12),
 				POP(rbp),
 				xRET()
 			]
