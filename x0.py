@@ -598,7 +598,7 @@ class X:
 			if v not in s:
 				return sat
 			for u in s[v]:
-				if u in color_graph:
+				if u in color_graph and color_graph[u]:
 					sat |= set([color_graph[u]])
 			return sat
 
@@ -634,8 +634,7 @@ class X:
 			if color_graph[v] != []: 
 				v_allocs[v] = regs[color_graph[v]]
 				# remove this var from locals, any left will be allocated stack space
-				if v in self.info['locals']:
-					self.info['locals'].remove(v)
+				self.info['locals'].remove(v)
 		new_inf = {**self.info, **{'allocs': v_allocs}}
 		return X(new_inf, self.ms)
 

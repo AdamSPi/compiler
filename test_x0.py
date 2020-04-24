@@ -93,7 +93,7 @@ def test_allocated_regs():
 		assert r_ast.opt().interp(True, True) == x_prog.uncover_live().allocate_regs().assign_regs().interp(True, True)[rax]
 
 def test_move_biasing():
-	for n in range(3,8):
+	for n in range(3,12):
 		stop = False
 		while not stop:
 			r_ast = gen(rand_r1, n)

@@ -10,37 +10,27 @@ jmp _body
 
 _body:
 callq _read_int
-movq $175, %r12
-addq %rax, %r12
-callq _read_int
-movq %rax, %rbx
-addq %r12, %rbx
-callq _read_int
-movq %rax, %r12
-negq %r12
-addq %rbx, %r12
-callq _read_int
-movq %rax, %rbx
-addq %r12, %rbx
-negq %rbx
-negq %rbx
-negq %rbx
-callq _read_int
-movq %rax, %r12
-negq %r12
-movq $-95, %r13
-addq %r12, %r13
-callq _read_int
-addq %rax, %r12
-addq %r13, %r12
-callq _read_int
-addq $-528, %rax
-addq %r12, %rax
-addq $-36, %rax
-addq %rbx, %rax
 movq %rax, -8(%rbp)
-negq -8(%rbp)
-movq -8(%rbp), %rax
+movq -8(%rbp), %r13
+addq $212, %r13
+negq %r13
+callq _read_int
+movq %r13, %rbx
+addq %rax, %rbx
+negq %rbx
+addq %r13, %rbx
+callq _read_int
+movq %rax, %r12
+addq %r13, %r13
+callq _read_int
+addq %rax, %r13
+negq %r13
+movq %r13, %rax
+addq %r12, %rax
+addq %rbx, %rax
+movq %rax, -16(%rbp)
+negq -16(%rbp)
+movq -16(%rbp), %rax
 jmp _end
 
 _end:
