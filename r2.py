@@ -68,7 +68,7 @@ class Expr:
 
 
 
-class CMP(Expr):
+class CMP(Expr, BOOL):
 	def __init__(self, op, e1, e2):
 		self.op = op # must be CMP
 		self.e1 = e1 # must be NUM
@@ -88,6 +88,9 @@ class eq(CMP):
 		self.str = "eq()"
 
 	def interp(self, e1, e2):
+		if type(e1) != S64 or type(e2) != S64:
+			print('TypeError: expected s64')
+			throw TypeError
 		return e1.num == e2.num
 
 class lt(CMP):
@@ -96,6 +99,9 @@ class lt(CMP):
 		self.str = "lt()"
 
 	def interp(self, e1, e2):
+		if type(e1) != S64 or type(e2) != S64:
+			print('TypeError: expected s64')
+			throw TypeError
 		return e1.num < e2.num
 
 class lte(CMP):
@@ -104,6 +110,9 @@ class lte(CMP):
 		self.str = "lte()"
 
 	def interp(self, e1, e2):
+		if type(e1) != S64 or type(e2) != S64:
+			print('TypeError: expected s64')
+			throw TypeError
 		return e1.num <= e2.num
 
 class gte(CMP):
@@ -112,6 +121,9 @@ class gte(CMP):
 		self.str = "gte()"
 
 	def interp(self, e1, e2):
+		if type(e1) != S64 or type(e2) != S64:
+			print('TypeError: expected s64')
+			throw TypeError
 		return e1.num >= e2.num
 
 class gt(CMP):
@@ -120,6 +132,9 @@ class gt(CMP):
 		self.str = "gt()"
 
 	def interp(self, e1, e2):
+		if type(e1) != S64 or type(e2) != S64:
+			print('TypeError: expected s64')
+			throw TypeError
 		return e1.num > e2.num
 
 
@@ -132,7 +147,11 @@ class IF(Expr):
 		self.str = f"IF({c}, {t}, {f})"
 
 	def interp(self, env, db, inp):
-		if(self.cond.interp(env, db, inp)):
+		cond = self.cond.interp(env, db, inp)
+		if type(cond) != BOOL:
+			print('TypeError: expected bool')
+			throw TypeError
+		if cond:
 			return self.t.interp(env, db, inp)
 		return self.f.interp(env, db, inp)
 
@@ -165,16 +184,26 @@ class NOT(Expr, BOOL):
 		self.str = f"NOT({self.bool})"
 
 	def interp(self, env, db, inp):
-		if self.bool.interp(env, db, inp):
+		b = self.bool.interp(env, db, inp)
+		if type(b) != BOOL:
+			print('TypeError: expected bool')
+			throw TypeError
+		if b:
 			return TRUE()
 		return FALSE()
 
 class AND(Expr, BOOL):
 	def __init__(self, e1, e2):
+		if type(e1) != BOOL or type(e2) != BOOL:
+			print('TypeError: expected bool')
+			throw TypeError
 		return IF(e1, e2, FALSE())
 
 class OR(Expr, BOOL):
 	def __init__(self, e1, e2):
+		if type(e1) != BOOL or type(e2) != BOOL:
+			print('TypeError: expected bool')
+			throw TypeError
 		return IF(e1, TRUE(), e2)
 
 
@@ -279,7 +308,7 @@ class VAR(Expr):
 	def is_unused(self, var):
 		return not self.val == var.val
 
-class NUM(Expr):
+class NUM(Expr, S64):
 	def __init__(self, num):
 		self.num = num
 		self.pp = f"{self.num}"
@@ -309,7 +338,7 @@ class NUM(Expr):
 	def is_unused(self, var):
 		return True
 
-class READ(Expr):
+class READ(Expr, S64):
 	_db_cnt = RAND
 	_rd_cnt = 0
 
@@ -349,7 +378,7 @@ class READ(Expr):
 	def is_unused(self, var):
 		return True
 
-class NEG(Expr):
+class NEG(Expr, S64):
 	def __init__(self, e):
 		self.expr = e
 		self.pp = f"(- {self.expr})"
@@ -382,7 +411,7 @@ class NEG(Expr):
 	def is_unused(self, var):
 		return self.expr.is_unused(var)
 
-class ADD(Expr):
+class ADD(Expr, S64):
 	def __init__(self, e1, e2):
 		self.lhs, self.rhs = e1, e2
 		self.pp = f"(+ {self.lhs} {self.rhs})"
