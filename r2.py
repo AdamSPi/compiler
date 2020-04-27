@@ -81,6 +81,12 @@ class CMP(Expr, BOOL):
 		rhs = self.e2.interp(env, db, inp)
 		return self.op.interp(lhs, rhs)
 
+	def Γ(self, γ):
+		if self.e1.Γ(γ) != S64 or self.e2.Γ(γ) != S64:
+			print('TypeError: expected s64')
+			throw TypeError
+		return BOOL
+
 
 class eq(CMP):
 	def __init__(self):
@@ -88,9 +94,6 @@ class eq(CMP):
 		self.str = "eq()"
 
 	def interp(self, e1, e2):
-		if type(e1) != S64 or type(e2) != S64:
-			print('TypeError: expected s64')
-			throw TypeError
 		return e1.num == e2.num
 
 class lt(CMP):
@@ -99,9 +102,6 @@ class lt(CMP):
 		self.str = "lt()"
 
 	def interp(self, e1, e2):
-		if type(e1) != S64 or type(e2) != S64:
-			print('TypeError: expected s64')
-			throw TypeError
 		return e1.num < e2.num
 
 class lte(CMP):
@@ -110,9 +110,6 @@ class lte(CMP):
 		self.str = "lte()"
 
 	def interp(self, e1, e2):
-		if type(e1) != S64 or type(e2) != S64:
-			print('TypeError: expected s64')
-			throw TypeError
 		return e1.num <= e2.num
 
 class gte(CMP):
@@ -121,9 +118,6 @@ class gte(CMP):
 		self.str = "gte()"
 
 	def interp(self, e1, e2):
-		if type(e1) != S64 or type(e2) != S64:
-			print('TypeError: expected s64')
-			throw TypeError
 		return e1.num >= e2.num
 
 class gt(CMP):
@@ -132,9 +126,6 @@ class gt(CMP):
 		self.str = "gt()"
 
 	def interp(self, e1, e2):
-		if type(e1) != S64 or type(e2) != S64:
-			print('TypeError: expected s64')
-			throw TypeError
 		return e1.num > e2.num
 
 
@@ -147,13 +138,20 @@ class IF(Expr):
 		self.str = f"IF({c}, {t}, {f})"
 
 	def interp(self, env, db, inp):
-		cond = self.cond.interp(env, db, inp)
-		if type(cond) != BOOL:
-			print('TypeError: expected bool')
-			throw TypeError
-		if cond:
+		if self.cond.interp(env, db, inp):
 			return self.t.interp(env, db, inp)
 		return self.f.interp(env, db, inp)
+
+	def Γ(self, γ):
+		if self.cond.Γ(γ) != BOOL:
+			print('TypeError: expected bool')
+			throw TypeError
+		type_t = self.t.Γ(γ)
+		type_f = self.f.Γ(γ)
+		if type_t != type_f:
+			print(f'TypeError: expected {type_t}')
+			throw TypeError
+		return type_t
 
 class TRUE(Expr, BOOL):
 	def __init__(self):
@@ -162,6 +160,9 @@ class TRUE(Expr, BOOL):
 
 	def interp(self, env, db, inp):
 		return self
+
+	def Γ(self, γ):
+		return BOOL
 
 	def __bool__(self):
 		return True
@@ -174,6 +175,9 @@ class FALSE(Expr, BOOL):
 	def interp(self, env, db, inp):
 		return self
 
+	def Γ(self, γ):
+		return BOOL
+
 	def __bool__(self):
 		return False
 
@@ -184,26 +188,24 @@ class NOT(Expr, BOOL):
 		self.str = f"NOT({self.bool})"
 
 	def interp(self, env, db, inp):
-		b = self.bool.interp(env, db, inp)
-		if type(b) != BOOL:
-			print('TypeError: expected bool')
-			throw TypeError
-		if b:
+		if self.bool.interp(env, db, inp):
 			return TRUE()
 		return FALSE()
 
-class AND(Expr, BOOL):
-	def __init__(self, e1, e2):
-		if type(e1) != BOOL or type(e2) != BOOL:
+	def Γ(self, γ):
+		b = self.bool.Γ(γ)
+		if b != BOOL:
 			print('TypeError: expected bool')
 			throw TypeError
+		return BOOL
+
+class AND(Expr, BOOL):
+	def __init__(self, e1, e2):
 		return IF(e1, e2, FALSE())
+
 
 class OR(Expr, BOOL):
 	def __init__(self, e1, e2):
-		if type(e1) != BOOL or type(e2) != BOOL:
-			print('TypeError: expected bool')
-			throw TypeError
 		return IF(e1, TRUE(), e2)
 
 
@@ -261,6 +263,12 @@ class LET(Expr):
 	def is_unused(self, var):
 		return self.xe.is_unused(var) and self.be.is_unused(var)
 
+	def Γ(self, γ):
+		type_v = self.var.Γ(γ)
+		type_xe = self.xe.Γ(γ)
+		type_be = self.be.Γ(γ)
+		γ[self.var.val] = type_xe
+		return type_be
 
 
 class VAR(Expr):
@@ -308,6 +316,9 @@ class VAR(Expr):
 	def is_unused(self, var):
 		return not self.val == var.val
 
+	def Γ(self, γ):
+		return γ[self.val]
+
 class NUM(Expr, S64):
 	def __init__(self, num):
 		self.num = num
@@ -337,6 +348,9 @@ class NUM(Expr, S64):
 
 	def is_unused(self, var):
 		return True
+
+	def Γ(self, γ):
+		return S64
 
 class READ(Expr, S64):
 	_db_cnt = RAND
@@ -378,6 +392,9 @@ class READ(Expr, S64):
 	def is_unused(self, var):
 		return True
 
+	def Γ(self, γ):
+		return S64
+
 class NEG(Expr, S64):
 	def __init__(self, e):
 		self.expr = e
@@ -410,6 +427,13 @@ class NEG(Expr, S64):
 
 	def is_unused(self, var):
 		return self.expr.is_unused(var)
+
+	def Γ(self, γ):
+		type_e = self.expr.Γ(γ)
+		if type_e != S64:
+			print('TypeError: expected s64')
+			throw TypeError
+		return S64
 
 class ADD(Expr, S64):
 	def __init__(self, e1, e2):
@@ -494,6 +518,15 @@ class ADD(Expr, S64):
 
 	def is_unused(self, var):
 		return self.lhs.is_unused(var) and self.rhs.is_unused(var)
+
+	def Γ(self, γ):
+		type_l = self.lhs.Γ(γ)
+		type_r = self.rhs.Γ(γ)
+		if type_r != S64 or type_l != S64:
+			print('TypeError: expected s64')
+			throw TypeError
+		return S64
+
 
 class P:
 	def __init__(self, e):
