@@ -11,3 +11,5 @@ then run make test
 Run deactivate to exit venv
 
 x86 is outputted to x.s during tests are run
+
+latest branch is 'r2'
