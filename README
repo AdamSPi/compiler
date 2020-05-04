@@ -1,1 +1,13 @@
 If running on macOS, set the MAC_OS line in flags.py to 1 o.w. set to 0.
+
+To install dependencies, run make in project dir
+
+To run tests, first activate the virtual environment by running the following:
+
+$ source venv/bin/activate
+
+then run make test
+
+Run deactivate to exit venv
+
+x86 is outputted to x.s during tests are run

@@ -264,7 +264,6 @@ class LET(Expr):
 		return self.xe.is_unused(var) and self.be.is_unused(var)
 
 	def Γ(self, γ):
-		type_v = self.var.Γ(γ)
 		type_xe = self.xe.Γ(γ)
 		type_be = self.be.Γ(γ)
 		γ[self.var.val] = type_xe
@@ -591,7 +590,7 @@ class P:
 def gen(f, n):
 	return P(f(n))
 
-def rand_r1(n, vs=[]):
+def rand_r2(n, vs=[]):
 	if n == 0:
 		if choice([0,1]) and vs:
 			return choice(vs)
@@ -608,25 +607,6 @@ def rand_r1(n, vs=[]):
 		vs_prime = vs + [x_prime]
 		return \
 			LET(x_prime, rand_r1(n-1, vs), rand_r1(n-1, vs_prime))
-
-def rand_r1_no_read(n, vs=[]):
-	if n == 0:
-		if choice([0,1]) and vs:
-			return choice(vs)
-		else:
-			return NUM(choice(range(-256, 256)))
-	j = choice([0,1,2])
-	if j == 0:
-		return NEG(rand_r1_no_read(n-1, vs))
-	elif j == 1:
-		return \
-			ADD(rand_r1_no_read(n-1, vs), rand_r1_no_read(n-1, vs))
-	else:
-		x_prime = VAR(choice(ascii_letters))
-		vs_prime = vs + [x_prime]
-		return \
-			LET(x_prime, rand_r1_no_read(n-1, vs), rand_r1_no_read(n-1, vs_prime))
-
 
 def is_rco_form(e):
 	if type(e) in (VAR, NUM):
