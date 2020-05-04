@@ -84,7 +84,7 @@ class CMP(Expr, BOOL):
 	def Γ(self, γ):
 		if self.e1.Γ(γ) != S64 or self.e2.Γ(γ) != S64:
 			print('TypeError: expected s64')
-			throw TypeError
+			raise TypeError
 		return BOOL
 
 
@@ -145,12 +145,12 @@ class IF(Expr):
 	def Γ(self, γ):
 		if self.cond.Γ(γ) != BOOL:
 			print('TypeError: expected bool')
-			throw TypeError
+			raise TypeError
 		type_t = self.t.Γ(γ)
 		type_f = self.f.Γ(γ)
 		if type_t != type_f:
 			print(f'TypeError: expected {type_t}')
-			throw TypeError
+			raise TypeError
 		return type_t
 
 class TRUE(Expr, BOOL):
@@ -196,7 +196,7 @@ class NOT(Expr, BOOL):
 		b = self.bool.Γ(γ)
 		if b != BOOL:
 			print('TypeError: expected bool')
-			throw TypeError
+			raise TypeError
 		return BOOL
 
 class AND(Expr, BOOL):
@@ -366,7 +366,7 @@ class READ(Expr, S64):
 		if db:
 			if inp:
 				# running opt could cut read calls
-				# which could throw off test results
+				# which could raise off test results
 				# this flag make read always return inp
 				self.num = inp
 			else:
@@ -431,7 +431,7 @@ class NEG(Expr, S64):
 		type_e = self.expr.Γ(γ)
 		if type_e != S64:
 			print('TypeError: expected s64')
-			throw TypeError
+			raise TypeError
 		return S64
 
 class ADD(Expr, S64):
@@ -523,7 +523,7 @@ class ADD(Expr, S64):
 		type_r = self.rhs.Γ(γ)
 		if type_r != S64 or type_l != S64:
 			print('TypeError: expected s64')
-			throw TypeError
+			raise TypeError
 		return S64
 
 
